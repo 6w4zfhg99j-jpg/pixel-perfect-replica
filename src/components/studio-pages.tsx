@@ -159,12 +159,14 @@ export function RecordDialog({
   onClose,
   record,
   booking,
+  studentId,
 }: {
   kind: FormKind;
   open: boolean;
   onClose: () => void;
   record?: Row | undefined;
   booking?: Row | undefined;
+  studentId?: string | undefined;
 }) {
   const { db, refresh } = useStudio();
   const [busy, setBusy] = useState(false);
@@ -501,7 +503,7 @@ export function RecordDialog({
             <>
               <div className="col-span-2">
                 <Field label="Allieva">
-                  <select required name="student_id">
+                  <select required name="student_id" defaultValue={studentId || ""}>
                     <option value="">Seleziona un'allieva</option>
                     {students["map"]((s) => (
                       <option key={String(s["id"])} value={String(s["id"])}>
@@ -1148,6 +1150,7 @@ export function StudentsPage() {
   const [dialog, setDialog] = useState(false);
   const [edit, setEdit] = useState<Row | undefined>();
   const [profile, setProfile] = useState<Row | null>(null);
+  const [purchaseFor, setPurchaseFor] = useState<Row | null>(null);
   const rows =
     (db?.["rows"]("SELECT * FROM students WHERE status=? ORDER BY name", [status]) || [])["filter"](
       (s) =>
@@ -1289,6 +1292,14 @@ export function StudentsPage() {
       {dialog && (
         <RecordDialog kind="student" record={edit} open onClose={() => setDialog(false)} />
       )}
+      {purchaseFor && (
+        <RecordDialog
+          kind="purchase"
+          studentId={String(purchaseFor["id"])}
+          open
+          onClose={() => setPurchaseFor(null)}
+        />
+      )}
       <Dialog open={!!profile} onOpenChange={(v) => !v && setProfile(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -1302,38 +1313,177 @@ export function StudentsPage() {
               <p className="text-xs text-muted-foreground">
                 {profile["email"]} {profile["notes"]}
               </p>
-              <h3 className="section-heading mt-3">Cronologia abbonamenti</h3>
-              {db["rows"]("SELECT * FROM memberships WHERE student_id=? ORDER BY purchased DESC", [
-                String(profile["id"]),
-              ])["map"]((m) => (
-                <div
-                  key={String(m["id"])}
-                  className="flex justify-between border-b border-border py-3 text-xs"
-                >
-                  <span>
-                    {m["name"]} · {m["purchased"]}
-                    {m["expires"] ? " · scade il " + m["expires"] : ""}
-                  </span>
-                  <span>
-                    {db["balance"](String(m["id"]))}/{m["visits"]} lezioni
-                  </span>
-                </div>
-              ))}
-              <h3 className="section-heading mt-3">Cronologia presenze</h3>
-              {db["bookings"]()
-                ["filter"]((b) => b["student_id"] === profile["id"])
-                ["map"]((b) => (
-                  <div
-                    key={String(b["id"])}
-                    className="flex justify-between border-b border-border py-3 text-xs"
-                  >
-                    <span>
-                      {b["date"]} · {b["class_name"]}
-                    </span>
-                    <span className="tag">{statusLabels[String(b["status"])] || String(b["status"])}</span>
-                  </div>
-                ))}
-              <h3 className="section-heading mt-3">Cronologia pagamenti</h3>
+              {(() => {
+                const sid = String(profile["id"]);
+                const memberships = db["rows"](
+                  "SELECT * FROM memberships WHERE student_id=? ORDER BY purchased DESC",
+                  [sid],
+                );
+                const current = db["activeMembership"](sid) || memberships[0];
+                const studentBookings = db["bookings"]()["filter"](
+                  (b) => b["student_id"] === profile["id"],
+                );
+                const next = studentBookings["find"](
+                  (b) =>
+                    Number(b["place"]) > 0 &&
+                    b["status"] === "Booked" &&
+                    String(b["date"]) >= romeToday(),
+                );
+                const last = studentBookings["filter"](
+                  (b) => b["status"] === "Present" || b["status"] === "Absent",
+                ).pop();
+                return (
+                  <>
+                    <div className="metric mt-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h3 className="section-heading">Panoramica</h3>
+                        <Button size="sm" onClick={() => setPurchaseFor(profile)}>
+                          <Plus />
+                          Vendi abbonamento
+                        </Button>
+                      </div>
+                      {current ? (
+                        <div className="mt-3 grid gap-2 text-xs">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium">{current["name"]}</span>
+                            <span
+                              className={
+                                "tag " +
+                                (db["membershipStatus"](current) === "Attivo"
+                                  ? "success"
+                                  : "warning")
+                              }
+                            >
+                              {db["membershipStatus"](current)}
+                            </span>
+                            <span className="tag">{db["paymentStatus"](current)}</span>
+                          </div>
+                          <p className="text-muted-foreground">
+                            Acquistato il {dateLabel(String(current["purchased"]))}
+                            {current["expires"]
+                              ? " · scade il " + dateLabel(String(current["expires"]))
+                              : " · senza scadenza"}
+                          </p>
+                          <p>
+                            <span className="font-display text-2xl">
+                              {db["balance"](String(current["id"]))}
+                            </span>{" "}
+                            lezioni rimanenti ·{" "}
+                            {Number(current["visits"]) - db["balance"](String(current["id"]))}{" "}
+                            usate · {current["visits"]} totali
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-xs text-muted-foreground">
+                          Nessun abbonamento acquistato.
+                        </p>
+                      )}
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {next
+                          ? `Prossima lezione: ${dateLabel(String(next["date"]))} · ${next["class_name"]}`
+                          : last
+                            ? `Ultima presenza: ${dateLabel(String(last["date"]))} · ${last["class_name"]} (${statusLabels[String(last["status"])] || String(last["status"])})`
+                            : "Nessuna lezione prenotata."}
+                      </p>
+                    </div>
+                    <h3 className="section-heading mt-3">Cronologia abbonamenti</h3>
+                    {memberships["map"]((m) => {
+                      const mid = String(m["id"]);
+                      const balance = db["balance"](mid);
+                      const payments = db["rows"](
+                        "SELECT * FROM payments WHERE membership_id=? ORDER BY date",
+                        [mid],
+                      );
+                      const log = db["transactions"](mid);
+                      return (
+                        <div key={mid} className="border-b border-border py-3 text-xs">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="font-medium">{m["name"]}</span>
+                            <span className="flex gap-2">
+                              <span
+                                className={
+                                  "tag " +
+                                  (db["membershipStatus"](m) === "Attivo" ? "success" : "warning")
+                                }
+                              >
+                                {db["membershipStatus"](m)}
+                              </span>
+                              <span className="tag">{db["paymentStatus"](m)}</span>
+                            </span>
+                          </div>
+                          <p className="mt-1 text-muted-foreground">
+                            Acquistato il {dateLabel(String(m["purchased"]))}
+                            {m["expires"]
+                              ? " · scade il " + dateLabel(String(m["expires"]))
+                              : ""}{" "}
+                            · {euro(Number(m["price"]))} · {balance}/{m["visits"]} lezioni
+                            rimanenti
+                          </p>
+                          {payments["map"]((p) => (
+                            <p key={String(p["id"])} className="mt-1">
+                              Pagato il {dateLabel(String(p["date"]))} · {p["method"]} ·{" "}
+                              {euro(Number(p["amount"]))}
+                            </p>
+                          ))}
+                          {log["length"] > 0 && (
+                            <div className="mt-2 rounded-md bg-muted/50 p-2">
+                              {log["map"]((t) => (
+                                <p key={String(t["id"])} className="text-muted-foreground">
+                                  {new Date(String(t["created"]))["toLocaleString"]("it-IT", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}{" "}
+                                  · {t["class_name"] ? `${t["class_name"]} · ` : ""}
+                                  {t["reason"]} · {Number(t["delta"]) > 0 ? "+" : ""}
+                                  {t["delta"]} → saldo {t["balance_after"]}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <h3 className="section-heading mt-3">Cronologia presenze</h3>
+                    {studentBookings["map"]((b) => {
+                      const membership = b["membership_id"]
+                        ? db["rows"]("SELECT * FROM memberships WHERE id=?", [
+                            String(b["membership_id"]),
+                          ])[0]
+                        : undefined;
+                      const deduction = membership
+                        ? db["transactions"](String(membership["id"]))["find"](
+                            (t) => t["booking_id"] === b["id"] && Number(t["delta"]) < 0,
+                          )
+                        : undefined;
+                      return (
+                        <div
+                          key={String(b["id"])}
+                          className="flex flex-wrap items-center justify-between gap-2 border-b border-border py-3 text-xs"
+                        >
+                          <span>
+                            {dateLabel(String(b["date"]))} · {b["class_name"]}{" "}
+                            <span className="text-muted-foreground">· {b["type"]}</span>
+                          </span>
+                          <span className="flex items-center gap-2">
+                            <span className="text-muted-foreground">
+                              {membership
+                                ? `${membership["name"]}${deduction ? " · saldo " + deduction["balance_after"] : ""}`
+                                : "Lezione singola"}
+                            </span>
+                            <span className="tag">
+                              {statusLabels[String(b["status"])] || String(b["status"])}
+                            </span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                    <h3 className="section-heading mt-3">Cronologia pagamenti</h3>
+                  </>
+                );
+              })()}
               {db["rows"]("SELECT * FROM payments WHERE student_id=? ORDER BY date DESC", [
                 String(profile["id"]),
               ])["map"]((p) => (
@@ -1548,11 +1698,23 @@ export function MembershipsPage() {
             </table>
             <h3 className="section-heading mt-6">Registro delle lezioni</h3>
             {(db?.["rows"](
-              "SELECT v.*,s.name FROM visit_transactions v JOIN memberships m ON m.id=v.membership_id JOIN students s ON s.id=m.student_id ORDER BY created DESC LIMIT 20",
+              "SELECT v.*,s.name student_name,m.name membership_name,c.name class_name FROM visit_transactions v JOIN memberships m ON m.id=v.membership_id JOIN students s ON s.id=m.student_id LEFT JOIN bookings b ON b.id=v.booking_id LEFT JOIN classes c ON c.id=b.class_id ORDER BY v.created DESC LIMIT 30",
             ) || [])["map"]((v) => (
-              <div className="flex gap-3 border-b border-border py-3 text-xs" key={String(v["id"])}>
-                <span>{v["name"]}</span>
-                <span className="text-muted-foreground">{v["reason"]}</span>
+              <div className="flex flex-wrap gap-3 border-b border-border py-3 text-xs" key={String(v["id"])}>
+                <span className="text-muted-foreground">
+                  {new Date(String(v["created"]))["toLocaleString"]("it-IT", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+                <span>{v["student_name"]}</span>
+                <span className="text-muted-foreground">
+                  {v["membership_name"]}
+                  {v["class_name"] ? " · " + v["class_name"] : ""} · {v["reason"]}
+                </span>
                 <span className="ml-auto">
                   {Number(v["delta"]) > 0 ? "+" : ""}
                   {v["delta"]}

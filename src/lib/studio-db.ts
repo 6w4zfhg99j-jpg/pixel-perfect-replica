@@ -43,7 +43,7 @@ export class StudioDB {
       this["db"]["run"]("BEGIN");
       try {
         this["db"]["run"](
-          "INSERT INTO membership_types VALUES ('m4','Abbonamento 4 lezioni',4,40,NULL),('m8','Abbonamento 8 lezioni',8,80,NULL)",
+          "INSERT INTO membership_types VALUES ('m4','Lezione di prova',1,10,NULL),('m_singola','Lezione singola',1,15,NULL),('m8','Abbonamento 8 lezioni — Promo',8,80,NULL),('m_standard','Abbonamento Standard',8,100,NULL)",
         );
         for (const name of [
           "Affitto dello studio",
@@ -99,6 +99,34 @@ export class StudioDB {
         this["db"]["run"]("UPDATE payments SET method='Altro' WHERE method='Other'");
         this["db"]["run"]("UPDATE settings SET value='Contanti,Revolut,Satispay,Altro' WHERE key='methods' AND value='Cash,Revolut,Satispay,Other'");
         this["db"]["run"]("INSERT INTO schema_versions VALUES(2,?)", [new Date()["toISOString"]()]);
+        this["db"]["run"]("COMMIT");
+      } catch (e) {
+        this["db"]["run"]("ROLLBACK");
+        throw e;
+      }
+    }
+    if (!this["rows"]("SELECT * FROM schema_versions WHERE version=3")["length"]) {
+      this["db"]["run"]("BEGIN");
+      try {
+        this["db"]["run"](
+          "UPDATE membership_types SET name='Lezione di prova',visits=1,price=10 WHERE id='m4' AND name='Abbonamento 4 lezioni'",
+        );
+        this["db"]["run"](
+          "UPDATE membership_types SET name='Abbonamento 8 lezioni — Promo',visits=8,price=80 WHERE id='m8' AND name='Abbonamento 8 lezioni'",
+        );
+        this["db"]["run"](
+          "INSERT OR IGNORE INTO membership_types VALUES ('m_singola','Lezione singola',1,15,NULL),('m_standard','Abbonamento Standard',8,100,NULL)",
+        );
+        this["db"]["run"](
+          "UPDATE visit_transactions SET reason='Presenza registrata' WHERE reason='Attendance marked Present'",
+        );
+        this["db"]["run"](
+          "UPDATE visit_transactions SET reason='Presenza ripristinata' WHERE reason='Attendance reversed'",
+        );
+        this["db"]["run"](
+          "UPDATE bookings SET notes=replace(notes,'[Booking removed]','[Prenotazione rimossa]') WHERE notes LIKE '%[Booking removed]%'",
+        );
+        this["db"]["run"]("INSERT INTO schema_versions VALUES(3,?)", [new Date()["toISOString"]()]);
         this["db"]["run"]("COMMIT");
       } catch (e) {
         this["db"]["run"]("ROLLBACK");
@@ -188,6 +216,32 @@ export class StudioDB {
       "SELECT * FROM memberships WHERE student_id=? AND (expires IS NULL OR expires>=?) ORDER BY purchased DESC",
       [student, date],
     )["find"]((m) => this["balance"](String(m["id"])) > 0);
+  }
+  membershipStatus(m: Row, date = romeToday()) {
+    const balance = this["balance"](String(m["id"]));
+    if (balance <= 0) return "Completato";
+    if (m["expires"] && String(m["expires"]) < date) return "Scaduto";
+    return "Attivo";
+  }
+  paymentStatus(m: Row) {
+    const paid = this["value"](
+      "SELECT COALESCE(sum(amount),0) FROM payments WHERE membership_id=?",
+      [String(m["id"])],
+    );
+    if (paid <= 0) return "Non pagato";
+    if (paid < Number(m["price"])) return "Parzialmente pagato";
+    return "Pagato";
+  }
+  transactions(membershipId: string) {
+    const visits = this["value"]("SELECT visits FROM memberships WHERE id=?", [membershipId]);
+    let running = visits;
+    return this["rows"](
+      `SELECT v.*,c.name class_name,c.date class_date,c.type class_type FROM visit_transactions v LEFT JOIN bookings b ON b.id=v.booking_id LEFT JOIN classes c ON c.id=b.class_id WHERE v.membership_id=? ORDER BY v.created,v.id`,
+      [membershipId],
+    )["map"]((t) => {
+      running += Number(t["delta"]);
+      return { ...t, balance_after: running };
+    });
   }
   async student(data: Record<string, string>, id?: string) {
     const sid = id || this["id"]();
@@ -324,7 +378,7 @@ export class StudioDB {
             mid,
             id,
             -1,
-            "Attendance marked Present",
+            "Presenza registrata",
             new Date()["toISOString"](),
           ]);
         }
@@ -334,7 +388,7 @@ export class StudioDB {
             mid,
             id,
             1,
-            "Attendance reversed",
+            "Presenza ripristinata",
             new Date()["toISOString"](),
           ]);
       }
@@ -348,7 +402,7 @@ export class StudioDB {
   }
   async removeBooking(id: string) {
     await this.attendance(id, 'Cancelled');
-    await this.run('UPDATE bookings SET place=-abs(place),notes=notes || ? WHERE id=?',[' [Booking removed]',id]);
+    await this.run('UPDATE bookings SET place=-abs(place),notes=notes || ? WHERE id=?',[' [Prenotazione rimossa]',id]);
   }
   async purchase(data: Record<string, string>) {
     const m = this["rows"]("SELECT * FROM membership_types WHERE id=?", [data["type_id"] ?? ""])[0];

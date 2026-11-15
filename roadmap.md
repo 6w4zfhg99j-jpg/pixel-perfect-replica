@@ -6,6 +6,7 @@
 - [x] Offline exports, backups, verified restore and isolated desktop source setup.
 - [x] Verify student → purchase → recurring classes → booking → Present/Absent → finance → reload, backup restore and mobile layout.
 - [ ] Packaged macOS offline launch and restart test — requires macOS hardware.
+- [x] Default plans (Prova €10/1, Singola €15/1, Promo €80/8, Standard €100/8) with schema v3 migration; full student profile (overview, purchase history with payment status, attendance history with balance, Italian transaction log).
 
 ## Remaining specification gaps
 - Whole-series editing and indefinite recurrence are not implemented; current recurrence requires an explicit date range.
