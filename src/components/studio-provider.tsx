@@ -11,9 +11,11 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState("");
   useEffect(() => {
+    let active = true;
     openStudio()
-      .then(setDb)
-      .catch((e) => setError(String(e)));
+      .then((studio) => { if (active) setDb(studio); })
+      .catch((e) => { if (active) setError(String(e)); });
+    return () => { active = false; };
   }, []);
   return (
     <Context.Provider value={{ db, revision, refresh: () => setRevision((n) => n + 1), error }}>

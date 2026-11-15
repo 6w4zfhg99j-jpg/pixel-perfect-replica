@@ -1,0 +1,78 @@
+import { createRequire } from 'node:module';
+import { mkdtemp, mkdir, rm, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import initSqlJs from 'sql.js';
+import { StudioDB } from '@/lib/studio-db';
+import * as XLSX from 'xlsx';
+
+const require = createRequire(import.meta.url);
+const { createStore, dataPath } = require('../../electron/local-files.cjs');
+const temporary: string[] = [];
+afterEach(async () => { for (const dir of temporary.splice(0)) await rm(dir, { recursive: true, force: true }); });
+describe('Desktop local persistence', () => {
+  it('persists every essential offline workflow and exports the actual financial totals', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'vona-offline-flow-')); temporary.push(root);
+    const store = createStore(dataPath(root));
+    const SQL = await initSqlJs();
+    const db = new StudioDB(new SQL.Database(), bytes => store.write(Array.from(bytes)));
+    await db.saveActivityType({ name: 'Pilates', color: '#AFC6D8' });
+    const sid = await db.student({ name: 'Verifica offline', registered: '2026-11-01' });
+    await db.purchase({ student_id: sid, type_id: 'm8', price: '80', paid: '80', purchased: '2026-11-01', payment_date: '2026-11-01', method: 'Contanti' });
+    expect(await db.recur({ name: 'Pilates offline', type: 'Pilates', from: '2026-11-01', to: '2026-11-30', start: '15:00', end: '16:00' }, [2])).toBe(4);
+    const classes = db.rows('SELECT id FROM classes ORDER BY date');
+    await db.book(String(classes[0]?.['id']), sid, 1, 'membership');
+    const mid = String(db.rows('SELECT id FROM memberships')[0]?.['id']);
+    expect(db.balance(mid)).toBe(8);
+    await db.attendance(String(db.rows('SELECT id FROM bookings')[0]?.['id']), 'Present');
+    expect(db.balance(mid)).toBe(7);
+    await db.book(String(classes[1]?.['id']), sid, 1, '15');
+    const bid = String(db.rows('SELECT id FROM bookings WHERE membership_id IS NULL')[0]?.['id']);
+    await db.payment({ student_id: sid, booking_id: bid, description: 'Lezione singola', amount: '15', date: '2026-11-10', method: 'Revolut' });
+    await db.expense({ description: 'Affitto', category: 'Affitto', amount: '30', date: '2026-11-01', method: 'Contanti' });
+    await store.flush();
+    db.db.close();
+    const saved = await store.read();
+    const reopened = new StudioDB(new SQL.Database(new Uint8Array(saved)));
+    expect(reopened.value('SELECT count(*) FROM students')).toBe(1);
+    expect(reopened.activityTypes().some(t => t['name'] === 'Pilates')).toBe(true);
+    expect(reopened.value('SELECT count(*) FROM recurring_schedules')).toBe(1);
+    expect(reopened.value('SELECT count(*) FROM classes')).toBe(4);
+    expect(reopened.value('SELECT count(*) FROM bookings')).toBe(2);
+    expect(reopened.value("SELECT count(*) FROM attendance WHERE status='Present'")).toBe(1);
+    expect(reopened.value('SELECT count(*) FROM memberships')).toBe(1);
+    expect(reopened.balance(mid)).toBe(7);
+    expect(reopened.finance('2026-11', 'Tutte')).toEqual({ income: 95, expenses: 30, profit: 65, payments: 2 });
+    const book = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet([reopened.finance('2026-11', 'Tutte')]), 'Riepilogo');
+    const exported = XLSX.read(XLSX.write(book, { type: 'buffer', bookType: 'xlsx' }));
+    const summary = exported.Sheets['Riepilogo'];
+    if (!summary) throw new Error('Missing summary worksheet');
+    expect(XLSX.utils.sheet_to_json(summary)).toEqual([{ income: 95, expenses: 30, profit: 65, payments: 2 }]);
+  });
+  it('uses its own persistent directory, outside the installation and separate from Sequence Designer', () => {
+    expect(dataPath('/Users/test/Library/Application Support')).toBe('/Users/test/Library/Application Support/VONA Studio Manager');
+    expect(dataPath('/Users/test/Library/Application Support')).not.toBe('/Applications/VONA Studio Manager.app');
+    expect(dataPath('/Users/test/Library/Application Support')).not.toBe('/Users/test/Library/Application Support/VONA Sequence Designer');
+  });
+  it('preserves the SQLite file after removing and replacing the installation', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'vona-store-test-')); temporary.push(root);
+    const install = path.join(root, 'Applications', 'VONA Studio Manager.app');
+    await mkdir(install, { recursive: true });
+    const store = createStore(dataPath(path.join(root, 'Application Support')));
+    const bytes = Array.from(Buffer.from('SQLite format 3\0local-test'));
+    await store.write(bytes);
+    await rm(install, { recursive: true });
+    await mkdir(install);
+    expect(await createStore(dataPath(path.join(root, 'Application Support'))).read()).toEqual(bytes);
+  });
+  it('serializes concurrent writes and keeps the last complete snapshot', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'vona-atomic-test-')); temporary.push(root);
+    const store = createStore(root);
+    await Promise.all([store.write([1, 2, 3]), store.write([4, 5, 6]), store.write([7, 8, 9])]);
+    await store.flush();
+    expect(await store.read()).toEqual([7, 8, 9]);
+    expect(Array.from(await readFile(store.file))).toEqual([7, 8, 9]);
+  });
+});

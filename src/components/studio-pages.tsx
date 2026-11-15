@@ -2222,7 +2222,7 @@ export function ClassPage({ id }: { id: string }) {
                           <span className="tag success">Pagata</span>
                         ) : (
                           <Button size="sm" variant="outline" onClick={() => setPayBooking(b)}>
-                            {Number(b["paid"]) > 0 ? "Partially paid" : "Da saldare"}
+                            {Number(b["paid"]) > 0 ? "Parzialmente pagata" : "Da saldare"}
                           </Button>
                         )}
                       </td>
@@ -2512,7 +2512,9 @@ export function SettingsPage() {
   async function backup() {
     if (!db) return;
     const bytes = db["db"]["export"]();
-    if (window["vonaDesktop"]) await window["vonaDesktop"]["backup"](Array["from"](bytes));
+    if (window["vonaDesktop"]) {
+      if (!await window["vonaDesktop"]["backup"](Array["from"](bytes))) return;
+    }
     else download(bytes, "VONA-Studio-" + romeToday() + ".sqlite");
     toast["success"]("Backup del database esportato.");
   }

@@ -1,4 +1,5 @@
 # VONA Studio Manager
+- [x] Technical readiness audit: repaired real DMG creation, pinned app-specific data path, serialized atomic writes, safe migrated restore and Italian finance filter; local Electron launch/restart/export verified using existing desktop output, current source verified separately by 29 tests and finance UI/export. No new build or packaging performed.
 - [x] Reused VONA Sequence Designer’s actual bundled Instrument Serif/Inter fonts, ivory/ink tokens, radiuses and button language; verified desktop/tablet/phone, student save/reload and 12 existing tests.
 - [x] Serve SQLite WASM as a public client-loaded asset; verified asset response, 12 tests, studio workflow and backup restore.
 - [x] Local SQLite schema, versioned initialization, transactional attendance/payment rules and 12 passing tests.
@@ -14,6 +15,6 @@
 - Booking payment-type changes after booking are not implemented.
 - Finance class filters cover linked single visits, not membership income allocation or shared expenses.
 - Monthly income/expense charts are implemented; a separate net-profit chart is not yet implemented.
-- Default membership prices of €40/€80 are provisional and editable; the brief did not supply these amounts.
-- No packaged or signed macOS application has been produced; Electron source is provided within the project only.- [x] Translate entire interface to Italian (default language): dashboard, navigation, buttons, calendar, students, memberships, finance, notifications, settings, errors; schema v2 migrates existing seed data to Italian.
+- No signed/notarized macOS application has been produced or tested on macOS; fresh desktop output incorporating the latest source fixes remains to be built.
+- [x] Translate entire interface to Italian (default language): dashboard, navigation, buttons, calendar, students, memberships, finance, notifications, settings, errors; schema v2 migrates existing seed data to Italian.
 - [x] Offline macOS desktop prep: audit clean, desktop:dmg script added, packaged app tested offline (student/class/booking/attendance/payment/membership + restart persistence).

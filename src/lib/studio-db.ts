@@ -344,6 +344,29 @@ export class StudioDB {
   async run(sql: string, params: SqlValue[] = []) {
     await this["transaction"](() => this["db"]["run"](sql, params));
   }
+  async restoreBackup(bytes: Uint8Array) {
+    const SQL = await getSQL();
+    const candidate = new SQL.Database(bytes);
+    try {
+      if (candidate.exec("PRAGMA integrity_check")[0]?.values[0]?.[0] !== "ok")
+        throw new Error("Backup del database non valido.");
+      if (!candidate.exec("SELECT version FROM schema_versions WHERE version=1").length)
+        throw new Error("Questo non è un backup di VONA Studio.");
+      for (const table of ["students", "classes", "memberships", "bookings", "payments", "expenses"])
+        candidate.exec(`SELECT * FROM ${table} LIMIT 1`);
+      // Upgrade old backups before exposing them to pages using the current API.
+      new StudioDB(candidate);
+      if (candidate.exec("PRAGMA foreign_key_check").length)
+        throw new Error("Il backup contiene riferimenti non validi.");
+      await this.save(candidate.export());
+    } catch (error) {
+      candidate.close();
+      throw error;
+    }
+    const old = this.db;
+    this.db = candidate;
+    old.close();
+  }
   id() {
     return crypto["randomUUID"]();
   }
@@ -575,7 +598,7 @@ export class StudioDB {
             Number(data["paid"] ?? ""),
             data["payment_date"] ?? "",
             data["method"] ?? "",
-            "Membership",
+            "Abbonamento",
           ],
         );
     });
@@ -605,7 +628,7 @@ export class StudioDB {
         amount,
         data["date"] ?? "",
         data["method"] ?? "",
-        (data["category"] ?? "") || "Other",
+        (data["category"] ?? "") || "Altro",
         (data["notes"] ?? "") || "",
       ],
     );
@@ -626,17 +649,18 @@ export class StudioDB {
   }
   finance(month: string, type = "All") {
     if (`${month}-01` < FINANCE_START) throw new Error("I report finanziari partono da ottobre 2026.");
+    const all = type === "All" || type === "Tutte";
     const clause =
-      type === "All"
+      all
         ? ""
         : " AND booking_id IN (SELECT b.id FROM bookings b JOIN classes c ON c.id=b.class_id WHERE c.type=?)";
-    const args: SqlValue[] = type === "All" ? [month] : [month, type];
+    const args: SqlValue[] = all ? [month] : [month, type];
     const income = this["value"](
       "SELECT COALESCE(sum(amount),0) FROM payments WHERE substr(date,1,7)=?" + clause,
       args,
     );
     const expenses =
-      type === "All"
+      all
         ? this["value"]("SELECT COALESCE(sum(amount),0) FROM expenses WHERE substr(date,1,7)=?", [
             month,
           ])
@@ -679,7 +703,7 @@ declare global {
     vonaDesktop?: {
       read: () => Promise<number[] | null>;
       write: (bytes: number[]) => Promise<void>;
-      backup: (bytes: number[]) => Promise<void>;
+      backup: (bytes: number[]) => Promise<boolean>;
       restore: () => Promise<number[] | null>;
     };
   }
@@ -737,26 +761,10 @@ export function download(
   setTimeout(() => URL["revokeObjectURL"](url), 1000);
 }
 export async function restoreStudio(studio: StudioDB, bytes: Uint8Array) {
-  const SQL = await getSQL();
-  const candidate = new SQL["Database"](bytes);
-  try {
-    if (candidate["exec"]("PRAGMA integrity_check")[0]?.["values"][0]?.[0] !== "ok")
-      throw new Error("Backup del database non valido.");
-    if (!candidate["exec"]("SELECT version FROM schema_versions WHERE version=1")["length"])
-      throw new Error("Questo non è un backup di VONA Studio.");
-    for (const table of ["students", "classes", "memberships", "bookings", "payments", "expenses"])
-      candidate["exec"](`SELECT * FROM ${table} LIMIT 1`);
-  } catch (e) {
-    candidate["close"]();
-    throw e;
-  }
-  candidate["close"]();
   const old = studio["db"]["export"]();
-  download(old, "VONA-before-restore-" + romeToday() + ".sqlite");
-  await studio["transaction"](() => {
-    studio["db"]["close"]();
-    studio["db"] = new SQL["Database"](bytes);
-    studio["db"]["run"]("PRAGMA foreign_keys=ON");
-    studio["db"]["run"]("BEGIN");
-  });
+  if (window.vonaDesktop) {
+    if (!await window.vonaDesktop.backup(Array.from(old)))
+      throw new Error("Ripristino annullato: salva prima una copia dei dati attuali.");
+  } else download(old, "VONA-before-restore-" + romeToday() + ".sqlite");
+  await studio.restoreBackup(bytes);
 }

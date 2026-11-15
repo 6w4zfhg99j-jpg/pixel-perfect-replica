@@ -36,3 +36,6 @@ use the editor.
 - Keep Electron isolated under electron/ and use its separate static renderer configuration; deployed SSR must never import Electron.
 - Serve SQLite WASM from public/wasm after hydration and include that public directory in desktop output; never import a WASM binary into the SSR graph.
 - Reload the preview when the StudioDB module hot-updates; React Refresh otherwise retains obsolete database instances in provider state, leaving new methods and migrations unavailable.
+- Pin desktop userData to a product-specific directory under appData, serialize atomic file replacements, and allow only one process; updates must not change the data location or race SQLite snapshots.
+- Validate and migrate backup candidates before persisting or swapping the live database, and require the desktop safety backup to complete; failed restores must retain the original data.
+- Create macOS DMGs through electron/build-dmg.cjs using a runtime-only staging folder and hdiutil; the script must reject non-macOS hosts rather than label an app folder as a DMG.
