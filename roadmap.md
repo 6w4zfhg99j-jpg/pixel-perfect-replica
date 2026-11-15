@@ -1,4 +1,5 @@
 # VONA Studio Manager
+- [ ] Match the actual VONA Sequence Designer visual system without changing functionality — awaiting access to the reference project.
 - [x] Serve SQLite WASM as a public client-loaded asset; verified asset response, 12 tests, studio workflow and backup restore.
 - [x] Local SQLite schema, versioned initialization, transactional attendance/payment rules and 12 passing tests.
 - [x] Dashboard, calendar, attendance, students, memberships, finance and settings core workflows.
