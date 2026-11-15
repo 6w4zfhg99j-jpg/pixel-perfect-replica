@@ -232,7 +232,7 @@ export class StudioDB {
     if (paid < Number(m["price"])) return "Parzialmente pagato";
     return "Pagato";
   }
-  transactions(membershipId: string) {
+  transactions(membershipId: string): (Row & { balance_after: number })[] {
     const visits = this["value"]("SELECT visits FROM memberships WHERE id=?", [membershipId]);
     let running = visits;
     return this["rows"](
@@ -240,7 +240,7 @@ export class StudioDB {
       [membershipId],
     )["map"]((t) => {
       running += Number(t["delta"]);
-      return { ...t, balance_after: running };
+      return { ...t, balance_after: running } as Row & { balance_after: number };
     });
   }
   async student(data: Record<string, string>, id?: string) {
