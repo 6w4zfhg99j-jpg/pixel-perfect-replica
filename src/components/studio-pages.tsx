@@ -687,7 +687,7 @@ export function Dashboard() {
   );
   const low = memberships["filter"]((m) => db && db["balance"](String(m["id"])) <= 2);
   const unpaid = (db?.["bookings"]() || [])["filter"](
-    (b) => !b["membership_id"] && Number(b["paid"]) < Number(b["amount"]),
+    (b) => Number(b["place"]) > 0 && !b["membership_id"] && Number(b["paid"]) < Number(b["amount"]),
   );
   return (
     <>
@@ -732,7 +732,7 @@ export function Dashboard() {
         <Metric
           label="Lezioni di oggi"
           value={classes["length"]}
-          detail={`${db?.["value"]("SELECT count(*) FROM bookings b JOIN classes c ON c.id=b.class_id WHERE c.date=?", [today]) || 0} allieve prenotate`}
+          detail={`${db?.["value"]("SELECT count(*) FROM bookings b JOIN classes c ON c.id=b.class_id WHERE c.date=? AND b.place>0", [today]) || 0} allieve prenotate`}
           icon={CalendarDays}
         />
         <Metric
@@ -1526,7 +1526,7 @@ export function StudentsPage() {
                 Prenotazioni da saldare:{" "}
                 {euro(
                   db["bookings"]()
-                    ["filter"]((b) => b["student_id"] === profile["id"] && !b["membership_id"])
+                    ["filter"]((b) => Number(b["place"]) > 0 && b["student_id"] === profile["id"] && !b["membership_id"])
                     ["reduce"](
                       (n, b) => n + Math["max"](0, Number(b["amount"]) - Number(b["paid"])),
                       0,
@@ -1789,6 +1789,7 @@ export function FinancePage() {
     ) || [];
   const unpaid = (db?.["bookings"]() || [])["filter"](
     (b) =>
+      Number(b["place"]) > 0 &&
       !b["membership_id"] &&
       Number(b["paid"]) < Number(b["amount"]) &&
       String(b["date"])["slice"](0, 7) === month &&
