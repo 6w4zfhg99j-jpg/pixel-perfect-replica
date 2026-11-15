@@ -1,5 +1,5 @@
 # VONA Studio Manager
-- [ ] Match the actual VONA Sequence Designer visual system without changing functionality — awaiting access to the reference project.
+- [x] Reused VONA Sequence Designer’s actual bundled Instrument Serif/Inter fonts, ivory/ink tokens, radiuses and button language; verified desktop/tablet/phone, student save/reload and 12 existing tests.
 - [x] Serve SQLite WASM as a public client-loaded asset; verified asset response, 12 tests, studio workflow and backup restore.
 - [x] Local SQLite schema, versioned initialization, transactional attendance/payment rules and 12 passing tests.
 - [x] Dashboard, calendar, attendance, students, memberships, finance and settings core workflows.

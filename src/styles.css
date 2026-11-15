@@ -8,12 +8,41 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
-@import "@fontsource/manrope/400.css";
-@import "@fontsource/manrope/500.css";
-@import "@fontsource/manrope/600.css";
-@import "@fontsource/manrope/700.css";
-@import "@fontsource/cormorant-garamond/400.css";
-@import "@fontsource/cormorant-garamond/500.css";
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./assets/fonts/instrument-serif.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./assets/fonts/instrument-serif-italic.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("./assets/fonts/inter-regular.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("./assets/fonts/inter-medium.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("./assets/fonts/inter-semibold.ttf") format("truetype");
+}
 
 @custom-variant dark (&:is(.dark *));
 
@@ -36,8 +65,17 @@
  */
 
 @theme inline {
-  --font-sans: "Manrope", sans-serif;
-  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent-soft: var(--accent-soft);
   --color-yoga: var(--yoga);
   --color-yoga-soft: var(--yoga-soft);
   --color-stretch: var(--stretch);
@@ -46,10 +84,10 @@
   --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
@@ -89,23 +127,31 @@
 }
 
 :root {
-  --radius: 0.5rem;
-  --background: oklch(0.976 0.006 80);
-  --foreground: oklch(0.32 0.015 55);
-  --card: oklch(0.995 0.002 80);
+  --radius: 12px;
+  --background: oklch(0.985 0.006 85);
+  --surface: oklch(1 0 0);
+  --surface-elevated: oklch(1 0 0);
+  --ink: oklch(0.22 0.02 60);
+  --ink-muted: oklch(0.5 0.015 60);
+  --ink-subtle: oklch(0.68 0.01 60);
+  --line: oklch(0.92 0.01 70);
+  --line-strong: oklch(0.82 0.015 70);
+  --foreground: var(--ink);
+  --card: var(--surface);
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
-  --primary: oklch(0.55 0.065 12);
-  --primary-foreground: oklch(0.995 0.002 80);
-  --secondary: oklch(0.932 0.016 65);
+  --primary: var(--ink);
+  --primary-foreground: var(--background);
+  --secondary: var(--surface);
   --secondary-foreground: var(--foreground);
-  --muted: oklch(0.949 0.009 75);
-  --muted-foreground: oklch(0.56 0.014 65);
-  --accent: oklch(0.926 0.025 15);
-  --accent-foreground: var(--primary);
-  --yoga: oklch(0.52 0.068 15);
-  --yoga-soft: oklch(0.943 0.024 15);
+  --muted: var(--surface);
+  --muted-foreground: var(--ink-muted);
+  --accent: oklch(0.58 0.14 40);
+  --accent-foreground: oklch(0.99 0 0);
+  --accent-soft: oklch(0.94 0.03 40);
+  --yoga: var(--ink-muted);
+  --yoga-soft: oklch(0.955 0.012 70);
   --stretch: oklch(0.48 0.045 155);
   --stretch-soft: oklch(0.935 0.021 145);
   --success: oklch(0.46 0.067 155);
@@ -114,22 +160,22 @@
   --warning-soft: oklch(0.951 0.036 80);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.903 0.012 70);
+  --border: var(--line);
   --input: var(--border);
-  --ring: var(--primary);
+  --ring: var(--accent);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.955 0.013 70);
+  --sidebar: var(--background);
   --sidebar-foreground: var(--foreground);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+  --sidebar-primary: var(--ink);
+  --sidebar-primary-foreground: var(--background);
+  --sidebar-accent: var(--surface);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--accent);
 }
 
 .dark {
@@ -168,6 +214,10 @@
 }
 
 @layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
   * {
     border-color: var(--color-border);
   }
@@ -177,6 +227,11 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     font-size: 13px;
+    letter-spacing: 0;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-serif);
+    font-weight: 400;
     letter-spacing: 0;
   }
 }
@@ -208,7 +263,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 42px;
-  background: var(--card);
+  background: color-mix(in oklab, var(--background) 85%, transparent);
+  backdrop-filter: blur(12px);
 }
 .studio-content {
   max-width: 1500px;
@@ -217,7 +273,8 @@
 }
 .wordmark {
   font-family: var(--font-display);
-  font-size: 46px;
+  font-size: 24px;
+  font-style: italic;
   line-height: 1;
 }
 .nav-link {
@@ -225,9 +282,10 @@
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   color: var(--muted-foreground);
-  font-weight: 500;
+  font-weight: 400;
+  font-size: 14px;
   transition: background 0.18s;
 }
 .nav-link:hover {
@@ -235,31 +293,32 @@
   color: var(--foreground);
 }
 .nav-link.active {
-  background: var(--accent);
-  color: var(--primary);
+  background: var(--ink);
+  color: var(--background);
 }
 .page-heading {
   font-family: var(--font-display);
-  font-size: 40px;
+  font-size: 36px;
   line-height: 1.15;
-  font-weight: 500;
+  font-weight: 400;
 }
 .section-heading {
   font-family: var(--font-display);
-  font-size: 25px;
+  font-size: 24px;
   line-height: 1.3;
-  font-weight: 500;
+  font-weight: 400;
 }
 .metric {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   padding: 22px;
   min-width: 0;
 }
 .metric-value {
   font-family: var(--font-display);
   font-size: 36px;
+  font-weight: 400;
   line-height: 1.1;
   margin-top: 16px;
 }
@@ -268,9 +327,9 @@
   padding-top: 24px;
 }
 .dashboard-banner {
-  background: var(--secondary);
+  background: var(--yoga-soft);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   padding: 24px 28px;
   position: relative;
   overflow: hidden;
@@ -290,7 +349,7 @@
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: var(--muted);
+  background: var(--yoga-soft);
   color: var(--primary);
   display: grid;
   place-items: center;
@@ -320,7 +379,7 @@
   background: var(--card);
   color: var(--foreground);
   border: 1px solid var(--input);
-  border-radius: 5px;
+  border-radius: var(--radius-md);
   padding: 10px 12px;
   font: inherit;
   outline: none;
@@ -340,7 +399,7 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--muted-foreground);
-  background: var(--muted);
+  background: var(--yoga-soft);
   padding: 13px 15px;
   white-space: nowrap;
 }
@@ -363,7 +422,7 @@
   background: var(--card);
 }
 .calendar-cell.outside {
-  background: var(--muted);
+  background: var(--background);
   color: var(--muted-foreground);
 }
 .calendar-cell.today {
@@ -514,13 +573,14 @@
   .mobile-brand {
     display: block;
     font-family: var(--font-display);
-    font-size: 27px;
+    font-size: 24px;
+    font-style: italic;
   }
   .desktop-breadcrumb {
     display: none;
   }
   .page-heading {
-    font-size: 34px;
+    font-size: 36px;
   }
   .calendar-cell {
     min-height: 88px;

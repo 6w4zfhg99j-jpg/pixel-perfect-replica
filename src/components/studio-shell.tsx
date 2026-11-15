@@ -38,7 +38,7 @@ function Shell({ children }: { children: ReactNode }) {
       <aside className="studio-sidebar">
         <div className="sidebar-brand px-3">
           <div className="wordmark">
-            VONA<span className="text-primary">.</span>
+            VONA
           </div>
           <p className="mt-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
             Studio manager
@@ -58,7 +58,7 @@ function Shell({ children }: { children: ReactNode }) {
         </nav>
         <div className="sidebar-footer mt-auto">
           <div className="flex items-center gap-3 border-t border-border pt-5 px-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent font-display text-lg text-primary">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-yoga-soft font-display text-lg text-primary">
               V
             </div>
             <div>
@@ -76,7 +76,7 @@ function Shell({ children }: { children: ReactNode }) {
             <ChevronRight size={13} />
             <span className="text-foreground">{title}</span>
           </div>
-          <div className="mobile-brand">VONA.</div>
+          <div className="mobile-brand">VONA</div>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-2 text-[10px] text-muted-foreground">
               <i className="status-dot" />
