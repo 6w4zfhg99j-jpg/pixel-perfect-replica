@@ -22,7 +22,7 @@ describe('Safe local restore', () => {
     await db.restoreBackup(old.db.export());
     expect(db.value('SELECT count(*) FROM students')).toBe(1);
     expect(db.activityTypes().map(t => t['name'])).toEqual(['Lezione individuale', 'Stretching', 'Yoga']);
-    expect(db.value('SELECT max(version) FROM schema_versions')).toBe(4);
+    expect(db.value('SELECT max(version) FROM schema_versions')).toBe(5);
   });
   it('keeps the existing data if saving the restored backup fails', async () => {
     const SQL = await initSqlJs();

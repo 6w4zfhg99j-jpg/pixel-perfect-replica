@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS recurring_schedules(id TEXT PRIMARY KEY,name TEXT,typ
 CREATE TABLE IF NOT EXISTS classes(id TEXT PRIMARY KEY,name TEXT NOT NULL,type TEXT NOT NULL,date TEXT NOT NULL,start TEXT NOT NULL,end TEXT NOT NULL,location TEXT DEFAULT '',price REAL NOT NULL DEFAULT 15,capacity INTEGER NOT NULL DEFAULT 15,status TEXT NOT NULL DEFAULT 'Scheduled',notes TEXT DEFAULT '',schedule_id TEXT REFERENCES recurring_schedules(id),UNIQUE(date,start,type));
 CREATE TABLE IF NOT EXISTS membership_types(id TEXT PRIMARY KEY,name TEXT NOT NULL,visits INTEGER NOT NULL,price REAL NOT NULL,validity INTEGER);
 CREATE TABLE IF NOT EXISTS memberships(id TEXT PRIMARY KEY,student_id TEXT NOT NULL REFERENCES students(id),type_id TEXT NOT NULL REFERENCES membership_types(id),name TEXT NOT NULL,visits INTEGER NOT NULL,price REAL NOT NULL,purchased TEXT NOT NULL,expires TEXT,notes TEXT DEFAULT '');
-CREATE TABLE IF NOT EXISTS bookings(id TEXT PRIMARY KEY,class_id TEXT NOT NULL REFERENCES classes(id),student_id TEXT NOT NULL REFERENCES students(id),place INTEGER NOT NULL,membership_id TEXT REFERENCES memberships(id),amount REAL NOT NULL DEFAULT 0,notes TEXT DEFAULT '',UNIQUE(class_id,student_id),UNIQUE(class_id,place));
+CREATE TABLE IF NOT EXISTS bookings(id TEXT PRIMARY KEY,class_id TEXT NOT NULL REFERENCES classes(id),student_id TEXT NOT NULL REFERENCES students(id),place INTEGER NOT NULL,membership_id TEXT REFERENCES memberships(id),amount REAL NOT NULL DEFAULT 0,notes TEXT DEFAULT '');
 CREATE TABLE IF NOT EXISTS attendance(booking_id TEXT PRIMARY KEY REFERENCES bookings(id),status TEXT NOT NULL DEFAULT 'Booked');
 CREATE TABLE IF NOT EXISTS visit_transactions(id TEXT PRIMARY KEY,membership_id TEXT NOT NULL REFERENCES memberships(id),booking_id TEXT REFERENCES bookings(id),delta INTEGER NOT NULL,reason TEXT NOT NULL,created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS payments(id TEXT PRIMARY KEY,student_id TEXT REFERENCES students(id),booking_id TEXT REFERENCES bookings(id),membership_id TEXT REFERENCES memberships(id),description TEXT NOT NULL,amount REAL NOT NULL CHECK(amount>0),date TEXT NOT NULL,method TEXT NOT NULL,category TEXT DEFAULT 'Other',notes TEXT DEFAULT '');
@@ -198,6 +198,30 @@ export class StudioDB {
       } catch (e) {
         this["db"]["run"]("ROLLBACK");
         throw e;
+      }
+    }
+    if (!this["rows"]("SELECT * FROM schema_versions WHERE version=5")["length"]) {
+      // Removed bookings are kept for history (place<0); uniqueness applies to active bookings only.
+      const legacy = String(this["rows"]("SELECT sql FROM sqlite_master WHERE name='bookings'")[0]?.["sql"] ?? "").includes("UNIQUE(class_id,student_id)");
+      this["db"]["run"]("PRAGMA foreign_keys=OFF");
+      this["db"]["run"]("BEGIN");
+      try {
+        if (legacy) {
+          this["db"]["run"]("CREATE TABLE bookings_v5(id TEXT PRIMARY KEY,class_id TEXT NOT NULL REFERENCES classes(id),student_id TEXT NOT NULL REFERENCES students(id),place INTEGER NOT NULL,membership_id TEXT REFERENCES memberships(id),amount REAL NOT NULL DEFAULT 0,notes TEXT DEFAULT '')");
+          this["db"]["run"]("INSERT INTO bookings_v5 SELECT id,class_id,student_id,place,membership_id,amount,notes FROM bookings");
+          this["db"]["run"]("DROP TABLE bookings");
+          this["db"]["run"]("ALTER TABLE bookings_v5 RENAME TO bookings");
+        }
+        this["db"]["run"]("CREATE UNIQUE INDEX IF NOT EXISTS booking_active_student ON bookings(class_id,student_id) WHERE place>0");
+        this["db"]["run"]("CREATE UNIQUE INDEX IF NOT EXISTS booking_active_place ON bookings(class_id,place) WHERE place>0");
+        if (this["rows"]("PRAGMA foreign_key_check")["length"]) throw new Error("Migrazione prenotazioni non riuscita.");
+        this["db"]["run"]("INSERT INTO schema_versions VALUES(5,?)", [new Date()["toISOString"]()]);
+        this["db"]["run"]("COMMIT");
+      } catch (e) {
+        this["db"]["run"]("ROLLBACK");
+        throw e;
+      } finally {
+        this["db"]["run"]("PRAGMA foreign_keys=ON");
       }
     }
   }
