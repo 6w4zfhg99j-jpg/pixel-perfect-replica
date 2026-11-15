@@ -34,3 +34,4 @@ use the editor.
 - Use client-initialized sql.js SQLite with IndexedDB in preview and Electron IPC for atomic userData file persistence; core operations must not depend on remote services.
 - Version schema migrations in studio-db.ts and retain relational constraints and transactional attendance/payment writes to protect historical records.
 - Keep Electron isolated under electron/ and use its separate static renderer configuration; deployed SSR must never import Electron.
+- Serve SQLite WASM from public/wasm after hydration and include that public directory in desktop output; never import a WASM binary into the SSR graph.

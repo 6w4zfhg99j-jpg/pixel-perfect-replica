@@ -125,11 +125,14 @@ export class StudioDB {
       this["db"]["run"]("COMMIT");
       await this["save"](this["db"]["export"]());
     } catch (e) {
+      let rolledBack = false;
       try {
         this["db"]["run"]("ROLLBACK");
+        rolledBack = true;
       } catch {
         /* already committed */
       }
+      if (rolledBack) throw e;
       const SQL = await getSQL();
       this["db"]["close"]();
       this["db"] = new SQL["Database"](before);
@@ -436,9 +439,9 @@ export function recurrenceDates(from: string, to: string, weekdays: number[]) {
 }
 let sqlPromise: Promise<SqlJsStatic> | undefined;
 export function getSQL() {
+  if (typeof window === 'undefined') throw new Error('SQLite must initialize after hydration.');
   sqlPromise ??= import("sql.js")["then"](async (mod) => {
-    const wasm = await import("sql.js/dist/sql-wasm.wasm?url");
-    return mod["default"]({ locateFile: () => wasm["default"] });
+    return mod["default"]({ locateFile: () => new URL('/wasm/sql-wasm.wasm', window.location.href).href });
   });
   return sqlPromise;
 }

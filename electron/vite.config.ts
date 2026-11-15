@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 export default defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),
   base: "./",
+  publicDir: fileURLToPath(new URL('../public', import.meta.url)),
   plugins: [react(), tailwind()],
   resolve: { alias: { "@": fileURLToPath(new URL("../src", import.meta.url)) } },
   build: { outDir: "../desktop-dist", emptyOutDir: true },
