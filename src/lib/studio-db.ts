@@ -1,4 +1,12 @@
 import type { Database, SqlJsStatic, SqlValue } from "sql.js";
+
+// React Refresh preserves provider state, including instances of the old class.
+// Reload when this module changes so every page uses the current API and migrations.
+// This runs only in development; persisted SQLite data is reopened normally.
+if (import.meta.hot) {
+  import.meta.hot.accept(() => window.location.reload());
+}
+
 export const CALENDAR_START = "2025-10-01";
 export const FINANCE_START = "2026-10-01";
 export const DEFAULT_CAPACITY = 15;

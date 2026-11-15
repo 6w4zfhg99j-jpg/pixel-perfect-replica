@@ -35,3 +35,4 @@ use the editor.
 - Version schema migrations in studio-db.ts and retain relational constraints and transactional attendance/payment writes to protect historical records.
 - Keep Electron isolated under electron/ and use its separate static renderer configuration; deployed SSR must never import Electron.
 - Serve SQLite WASM from public/wasm after hydration and include that public directory in desktop output; never import a WASM binary into the SSR graph.
+- Reload the preview when the StudioDB module hot-updates; React Refresh otherwise retains obsolete database instances in provider state, leaving new methods and migrations unavailable.
