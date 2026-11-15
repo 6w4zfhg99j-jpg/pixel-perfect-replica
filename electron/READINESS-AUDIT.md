@@ -43,3 +43,8 @@ Output: `desktop-release/VONA-Studio-Manager-<arch>.dmg`. First install dependen
 - Latest activities/categories/profile changes were tested as source/domain logic, not in regenerated Electron output. Desktop UI smoke covered only students, expenses, report export and restart using older output; complete latest-feature UI certification remains open.
 - Existing functionality limits remain, without feature removal: recurring schedules require an end date and do not support whole-series editing; existing booking payment-type changes are unavailable; class-specific finance filters exclude membership-income allocation/shared expenses; no separate net-profit chart. These are feature gaps, not internet dependencies.
 - Durable storage protects normal replacement/reinstall, not deleting userData, disk failure, abrupt power loss or another Mac/OS account. Keep regular external backups. SQLite uses in-memory sql.js with full-file snapshots, not native streaming SQLite; large datasets/performance and multi-process crash recovery have not been stress-tested.
+## Final audit — 15 November 2026, 16:40 UTC
+- 29/29 tests pass; `desktop:build` regenerated `desktop-dist` from current source.
+- Fresh build launched in Electron 43.7.11 (Linux, Xvfb; pinned Electron binary lacks system libraries here) at `vona://studio/`; student added, app terminated and relaunched, student still visible. Zero http/https/ws requests.
+- Persisted file `VONA Studio Manager/studio.sqlite`: schema v4, integrity ok, no foreign-key violations.
+- `desktop:dmg` correctly refuses on Linux; DMG creation, signing and macOS launch remain untested.
