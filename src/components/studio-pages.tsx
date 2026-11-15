@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   CalendarDays,
@@ -19,8 +19,6 @@ import {
   Check,
   CircleDollarSign,
   Clock3,
-  Leaf,
-  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -152,6 +150,12 @@ function Metric({
     </div>
   );
 }
+function tagStyle(color: string | undefined): CSSProperties {
+  return color ? { background: color + "40", color: "var(--ink)" } : {};
+}
+function chipStyle(color: string | undefined): CSSProperties {
+  return color ? { background: color + "2E", color: "var(--ink)", boxShadow: `inset 3px 0 0 ${color}` } : {};
+}
 type FormKind = "class" | "student" | "payment" | "expense" | "purchase" | "type";
 export function RecordDialog({
   kind,
@@ -176,6 +180,8 @@ export function RecordDialog({
   if (!db) return null;
   const today = romeToday();
   const settings = db["settings"]();
+  const activityTypeRows = db["activityTypes"]();
+  const expenseCategoryRows = db["expenseCategories"]();
   const students = db["rows"]("SELECT * FROM students WHERE status='Active' ORDER BY name");
   const types = db["rows"]("SELECT * FROM membership_types");
   const selected = types["find"]((t) => t["id"] === memberType) || types[0];
@@ -280,11 +286,18 @@ export function RecordDialog({
                   placeholder="es. Yoga dolce del mattino"
                 />
               </Field>
-              <Field label="Tipo di lezione">
-                <select name="type" defaultValue={String(record?.["type"] || "Yoga")}>
-                  {settings["class_types"]["split"](",")["map"]((t) => (
-                    <option key={t}>{t}</option>
+              <Field label="Tipo di attività">
+                <select
+                  name="type"
+                  defaultValue={String(record?.["type"] || activityTypeRows[0]?.["name"] || "")}
+                >
+                  {activityTypeRows["map"]((t) => (
+                    <option key={String(t["id"])}>{t["name"]}</option>
                   ))}
+                  {record &&
+                    !activityTypeRows["some"]((t) => t["name"] === record["type"]) && (
+                      <option>{String(record["type"])}</option>
+                    )}
                 </select>
               </Field>
               {recurring ? (
@@ -470,12 +483,15 @@ export function RecordDialog({
               <Field label="Categoria">
                 <select name="category" defaultValue={String(record?.["category"] || "Altro")}>
                   {(kind === "expense"
-                    ? db["rows"]("SELECT name FROM expense_categories")["map"]((r) =>
-                        String(r["name"]),
-                      )
+                    ? expenseCategoryRows["map"]((r) => String(r["name"]))
                     : ["Altro", "Lezione singola", "Abbonamento"])["map"]((t) => (
                     <option key={t}>{t}</option>
                   ))}
+                  {kind === "expense" &&
+                    record?.["category"] &&
+                    !expenseCategoryRows["some"]((r) => r["name"] === record["category"]) && (
+                      <option>{String(record["category"])}</option>
+                    )}
                 </select>
               </Field>
               {kind === "payment" && !booking && (
@@ -895,6 +911,7 @@ export function Dashboard() {
   );
 }
 function ClassLine({ c }: { c: Row }) {
+  const { db } = useStudio();
   return (
     <Link
       to="/classes/$id"
@@ -911,7 +928,9 @@ function ClassLine({ c }: { c: Row }) {
           {c["location"] || "VONA Studio"} · {c["start"]}–{c["end"]}
         </p>
       </div>
-      <span className={"tag " + (c["type"] === "Stretching" ? "stretch" : "")}>{c["type"]}</span>
+      <span className="tag" style={tagStyle(db?.["typeColor"](String(c["type"])))}>
+        {c["type"]}
+      </span>
       <ChevronRight size={14} className="text-muted-foreground" />
     </Link>
   );
@@ -1044,8 +1063,9 @@ export function CalendarPage() {
             onChange={(e) => setType(e["target"]["value"])}
           >
             <option>Tutte</option>
-            <option>Yoga</option>
-            <option>Stretching</option>
+            {(db?.["activityTypes"](true) || [])["map"]((t) => (
+              <option key={String(t["id"])}>{t["name"]}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -1062,15 +1082,12 @@ export function CalendarPage() {
             </Button>
           ))}
         </div>
-        <div className="flex gap-3">
-          <span className="tag">
-            <Leaf size={11} />
-            Yoga
-          </span>
-          <span className="tag stretch">
-            <Sparkles size={11} />
-            Stretching
-          </span>
+        <div className="flex flex-wrap gap-3">
+          {(db?.["activityTypes"]() || [])["map"]((t) => (
+            <span className="tag" key={String(t["id"])} style={tagStyle(String(t["color"]))}>
+              {t["name"]}
+            </span>
+          ))}
         </div>
       </div>
       {view === "Mese" ? (
@@ -1096,7 +1113,8 @@ export function CalendarPage() {
                     key={String(x["id"])}
                     to="/classes/$id"
                     params={{ id: String(x["id"]) }}
-                    className={"class-chip " + (x["type"] === "Stretching" ? "stretch" : "")}
+                    className="class-chip"
+                    style={chipStyle(db?.["typeColor"](String(x["type"])))}
                   >
                     <span>{x["start"]}</span> · {x["name"]}
                     {x["status"] === "Cancelled" ? " (annullata)" : ""}
@@ -1465,7 +1483,14 @@ export function StudentsPage() {
                         >
                           <span>
                             {dateLabel(String(b["date"]))} · {b["class_name"]}{" "}
-                            <span className="text-muted-foreground">· {b["type"]}</span>
+                            <span className="text-muted-foreground">
+                              ·{" "}
+                              <span
+                                className="type-dot"
+                                style={{ background: db["typeColor"](String(b["type"])) }}
+                              />{" "}
+                              {b["type"]}
+                            </span>
                           </span>
                           <span className="flex items-center gap-2">
                             <span className="text-muted-foreground">
@@ -1833,8 +1858,9 @@ export function FinancePage() {
             className="studio-input max-w-36"
           >
             <option>Tutte</option>
-            <option>Yoga</option>
-            <option>Stretching</option>
+            {(db?.["activityTypes"](true) || [])["map"]((t) => (
+              <option key={String(t["id"])}>{t["name"]}</option>
+            ))}
           </select>
         </div>
         <Button variant="outline" onClick={exportFinance}>
@@ -2406,9 +2432,81 @@ export function ClassPage({ id }: { id: string }) {
     </>
   );
 }
+function ActivityTypeDialog({ record, onClose }: { record?: Row | undefined; onClose: () => void }) {
+  const { db, refresh } = useStudio();
+  const [color, setColor] = useState(String(record?.["color"] || "#D9CFBF"));
+  const [busy, setBusy] = useState(false);
+  if (!db) return null;
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e["preventDefault"]();
+    if (!db) return;
+    setBusy(true);
+    const data = Object["fromEntries"](new FormData(e["currentTarget"])) as Record<string, string>;
+    try {
+      await db["saveActivityType"]({ ...data, color }, record ? String(record["id"]) : undefined);
+      refresh();
+      onClose();
+      toast["success"]("Salvato nel tuo studio.");
+    } catch (err) {
+      toast["error"](String(err)["replace"]("Error: ", ""));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-display text-3xl font-medium">
+            {record ? "Modifica tipo di attività" : "Nuovo tipo di attività"}
+          </DialogTitle>
+          <DialogDescription>VONA Studio · Tipi di attività</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="grid gap-4">
+          <Field label="Nome del tipo di attività">
+            <input
+              required
+              name="name"
+              defaultValue={String(record?.["name"] || "")}
+              placeholder="es. Pilates"
+            />
+          </Field>
+          <Field label="Colore">
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                aria-label="Scegli il colore"
+                value={color}
+                onChange={(e) => setColor(e["target"]["value"])}
+                className="h-10 w-14 cursor-pointer rounded-md border border-border bg-card p-1"
+              />
+              <input
+                name="color_hex"
+                aria-label="Codice colore HEX"
+                value={color}
+                onChange={(e) => setColor(e["target"]["value"])}
+                placeholder="#D9CFBF"
+                className="uppercase"
+              />
+            </div>
+          </Field>
+          <p className="text-[10px] text-muted-foreground">
+            Il colore distingue questa attività nel calendario e negli elenchi. Le lezioni e i
+            record storici esistenti non vengono modificati.
+          </p>
+          <Button type="submit" disabled={busy}>
+            <Check />
+            {busy ? "Salvataggio…" : "Salva tipo di attività"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 export function SettingsPage() {
   const { db, refresh } = useStudio();
   const [restoring, setRestoring] = useState(false);
+  const [typeEdit, setTypeEdit] = useState<Row | "new" | null>(null);
   if (!db) return <p>Apertura delle impostazioni…</p>;
   const s = db["settings"]();
   async function backup() {
@@ -2503,9 +2601,6 @@ export function SettingsPage() {
             <Field label="Metodi di pagamento (separati da virgola)">
               <input required name="methods" defaultValue={s["methods"]} />
             </Field>
-            <Field label="Tipi di lezione (separati da virgola)">
-              <input required name="class_types" defaultValue={s["class_types"]} />
-            </Field>
           </div>
           <Button type="submit" className="mt-6">
             <Check />
@@ -2561,12 +2656,118 @@ export function SettingsPage() {
         </p>
       </section>
       <section className="panel mt-9">
+        <h2 className="section-heading">Tipi di attività</h2>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Le attività che offri, ognuna con il suo colore nel calendario e negli elenchi. Archiviare
+          un tipo non cancella le lezioni storiche.
+        </p>
+        <div className="mt-5 max-w-2xl">
+          {db["activityTypes"](true)["map"]((t) => (
+            <div
+              key={String(t["id"])}
+              className="flex items-center gap-3 border-b border-border py-3"
+            >
+              <span className="type-swatch" style={{ background: String(t["color"]) }} />
+              <span className="flex-1 text-sm">
+                {t["name"]}
+                {Number(t["archived"]) ? (
+                  <span className="ml-2 text-[10px] text-muted-foreground">Archiviato</span>
+                ) : null}
+              </span>
+              <span className="text-[10px] uppercase text-muted-foreground">{t["color"]}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                title="Modifica tipo di attività"
+                onClick={() => setTypeEdit(t)}
+              >
+                <Pencil size={14} />
+              </Button>
+              {!Number(t["archived"]) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  title="Archivia tipo di attività"
+                  onClick={async () => {
+                    if (
+                      !confirm(
+                        `Archiviare «${t["name"]}»? Le lezioni e i record storici restano invariati.`,
+                      )
+                    )
+                      return;
+                    await db["archiveActivityType"](String(t["id"]));
+                    refresh();
+                    toast["success"]("Tipo di attività archiviato.");
+                  }}
+                >
+                  <Archive size={14} />
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+        <Button variant="outline" size="sm" className="mt-4" onClick={() => setTypeEdit("new")}>
+          <Plus />
+          Aggiungi tipo di attività
+        </Button>
+      </section>
+      <section className="panel mt-9">
         <h2 className="section-heading">Categorie di spesa</h2>
-        <div className="mt-5 flex flex-wrap gap-2">
-          {db["rows"]("SELECT * FROM expense_categories")["map"]((c) => (
-            <span className="tag stretch" key={String(c["name"])}>
-              {c["name"]}
-            </span>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Descrivono i soldi che spendi. Rinominare una categoria aggiorna anche le spese passate;
+          archiviarla non le cancella.
+        </p>
+        <div className="mt-5 max-w-2xl">
+          {db["expenseCategories"](true)["map"]((c) => (
+            <div
+              key={String(c["name"])}
+              className="flex items-center gap-3 border-b border-border py-3"
+            >
+              <span className="flex-1 text-sm">
+                {c["name"]}
+                {Number(c["archived"]) ? (
+                  <span className="ml-2 text-[10px] text-muted-foreground">Archiviata</span>
+                ) : null}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                title="Rinomina categoria"
+                onClick={async () => {
+                  const name = prompt("Nuovo nome della categoria", String(c["name"]));
+                  if (!name?.["trim"]() || name["trim"]() === c["name"]) return;
+                  try {
+                    await db["saveExpenseCategory"](name, String(c["name"]));
+                    refresh();
+                    toast["success"]("Categoria rinominata. Le spese storiche sono state aggiornate.");
+                  } catch (e) {
+                    toast["error"](String(e)["replace"]("Error: ", ""));
+                  }
+                }}
+              >
+                <Pencil size={14} />
+              </Button>
+              {!Number(c["archived"]) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  title="Archivia categoria"
+                  onClick={async () => {
+                    if (
+                      !confirm(
+                        `Archiviare «${c["name"]}»? Le spese storiche restano invariate.`,
+                      )
+                    )
+                      return;
+                    await db["archiveExpenseCategory"](String(c["name"]));
+                    refresh();
+                    toast["success"]("Categoria archiviata.");
+                  }}
+                >
+                  <Archive size={14} />
+                </Button>
+              )}
+            </div>
           ))}
         </div>
         <Button
@@ -2577,10 +2778,11 @@ export function SettingsPage() {
             const category = prompt("Nuova categoria di spesa");
             if (!category?.["trim"]()) return;
             try {
-              await db["run"]("INSERT INTO expense_categories VALUES(?)", [category["trim"]()]);
+              await db["saveExpenseCategory"](category);
               refresh();
+              toast["success"]("Categoria aggiunta.");
             } catch (e) {
-              toast["error"]("Questa categoria esiste già.");
+              toast["error"](String(e)["replace"]("Error: ", ""));
             }
           }}
         >
@@ -2599,6 +2801,12 @@ export function SettingsPage() {
           </Link>
         </Button>
       </section>
+      {typeEdit && (
+        <ActivityTypeDialog
+          record={typeEdit === "new" ? undefined : typeEdit}
+          onClose={() => setTypeEdit(null)}
+        />
+      )}
     </>
   );
 }

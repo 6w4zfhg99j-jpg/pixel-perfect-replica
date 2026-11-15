@@ -7,6 +7,7 @@
 - [x] Verify student → purchase → recurring classes → booking → Present/Absent → finance → reload, backup restore and mobile layout.
 - [ ] Packaged macOS offline launch and restart test — requires macOS hardware.
 - [x] Default plans (Prova €10/1, Singola €15/1, Promo €80/8, Standard €100/8) with schema v3 migration; full student profile (overview, purchase history with payment status, attendance history with balance, Italian transaction log).
+- [x] Custom activity types with colors (Yoga beige, Stretching dusty pink, Lezione individuale soft yellow defaults) and archivable expense categories (Affitto, Attrezzatura, Pubblicità, Marketing, Software, Trasporti, Altro) with schema v4 migration; color coding in calendar, lists, dashboard, profiles; Settings sections "Tipi di attività" and "Categorie di spesa".
 
 ## Remaining specification gaps
 - Whole-series editing and indefinite recurrence are not implemented; current recurrence requires an explicit date range.

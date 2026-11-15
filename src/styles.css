@@ -469,6 +469,20 @@
   background: var(--warning-soft);
   color: var(--warning);
 }
+.type-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.type-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  vertical-align: middle;
+}
 .mini-chart {
   height: 150px;
   display: grid;

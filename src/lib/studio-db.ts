@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS attendance(booking_id TEXT PRIMARY KEY REFERENCES boo
 CREATE TABLE IF NOT EXISTS visit_transactions(id TEXT PRIMARY KEY,membership_id TEXT NOT NULL REFERENCES memberships(id),booking_id TEXT REFERENCES bookings(id),delta INTEGER NOT NULL,reason TEXT NOT NULL,created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS payments(id TEXT PRIMARY KEY,student_id TEXT REFERENCES students(id),booking_id TEXT REFERENCES bookings(id),membership_id TEXT REFERENCES memberships(id),description TEXT NOT NULL,amount REAL NOT NULL CHECK(amount>0),date TEXT NOT NULL,method TEXT NOT NULL,category TEXT DEFAULT 'Other',notes TEXT DEFAULT '');
 CREATE VIEW IF NOT EXISTS income_transactions AS SELECT * FROM payments;
-CREATE TABLE IF NOT EXISTS expense_categories(name TEXT PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS activity_types(id TEXT PRIMARY KEY,name TEXT NOT NULL,color TEXT NOT NULL,archived INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS expense_categories(name TEXT PRIMARY KEY,archived INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS expenses(id TEXT PRIMARY KEY,description TEXT NOT NULL,category TEXT NOT NULL,amount REAL NOT NULL CHECK(amount>0),date TEXT NOT NULL,method TEXT NOT NULL,notes TEXT DEFAULT '');
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
 `;
@@ -54,7 +55,7 @@ export class StudioDB {
           "Trasporti",
           "Altro",
         ])
-          this["db"]["run"]("INSERT INTO expense_categories VALUES (?)", [name]);
+          this["db"]["run"]("INSERT INTO expense_categories(name) VALUES (?)", [name]);
         for (const [key, value] of Object["entries"]({
           studio_name: "VONA Studio Manager",
           capacity: "15",
@@ -88,7 +89,7 @@ export class StudioDB {
           ["Other", "Altro"],
         ];
         for (const [from, to] of categoryRenames) {
-          this["db"]["run"]("INSERT OR IGNORE INTO expense_categories VALUES (?)", [to]);
+          this["db"]["run"]("INSERT OR IGNORE INTO expense_categories(name) VALUES (?)", [to]);
           this["db"]["run"]("UPDATE expenses SET category=? WHERE category=?", [to, from]);
           this["db"]["run"]("DELETE FROM expense_categories WHERE name=?", [from]);
         }
@@ -133,6 +134,64 @@ export class StudioDB {
         throw e;
       }
     }
+    if (!this["rows"]("SELECT * FROM schema_versions WHERE version=4")["length"]) {
+      this["db"]["run"]("BEGIN");
+      try {
+        if (
+          !this["rows"]("PRAGMA table_info(expense_categories)")["some"](
+            (c) => c["name"] === "archived",
+          )
+        )
+          this["db"]["run"](
+            "ALTER TABLE expense_categories ADD COLUMN archived INTEGER NOT NULL DEFAULT 0",
+          );
+        const defaults: [string, string, string][] = [
+          ["at_yoga", "Yoga", "#D9CFBF"],
+          ["at_stretching", "Stretching", "#D3AFAF"],
+          ["at_individuale", "Lezione individuale", "#E4D6A4"],
+        ];
+        for (const [id, name, color] of defaults)
+          this["db"]["run"]("INSERT OR IGNORE INTO activity_types VALUES(?,?,?,0)", [
+            id,
+            name,
+            color,
+          ]);
+        const extra = new Set<string>();
+        const ct = this["rows"]("SELECT value FROM settings WHERE key='class_types'")[0];
+        if (ct)
+          for (const t of String(ct["value"])["split"](",")) if (t["trim"]()) extra["add"](t["trim"]());
+        for (const r of this["rows"]("SELECT DISTINCT type FROM classes"))
+          extra["add"](String(r["type"]));
+        for (const r of this["rows"](
+          "SELECT DISTINCT type FROM recurring_schedules WHERE type IS NOT NULL",
+        ))
+          extra["add"](String(r["type"]));
+        for (const name of extra)
+          if (name && !defaults["some"]((d) => d[1] === name))
+            this["db"]["run"]("INSERT OR IGNORE INTO activity_types VALUES(?,?,?,0)", [
+              this["id"](),
+              name,
+              "#C9BFAE",
+            ]);
+        const renames: [string, string][] = [
+          ["Affitto dello studio", "Affitto"],
+          ["Abbonamenti software", "Software"],
+        ];
+        for (const [from, to] of renames) {
+          this["db"]["run"]("INSERT OR IGNORE INTO expense_categories(name,archived) VALUES(?,0)", [
+            to,
+          ]);
+          this["db"]["run"]("UPDATE expenses SET category=? WHERE category=?", [to, from]);
+          this["db"]["run"]("DELETE FROM expense_categories WHERE name=? AND name<>?", [from, to]);
+        }
+        this["db"]["run"]("DELETE FROM settings WHERE key='class_types'");
+        this["db"]["run"]("INSERT INTO schema_versions VALUES(4,?)", [new Date()["toISOString"]()]);
+        this["db"]["run"]("COMMIT");
+      } catch (e) {
+        this["db"]["run"]("ROLLBACK");
+        throw e;
+      }
+    }
   }
   rows(sql: string, params: SqlValue[] = []): Row[] {
     const s = this["db"]["prepare"](sql);
@@ -157,8 +216,7 @@ export class StudioDB {
     | "single15"
     | "timezone"
     | "currency"
-    | "methods"
-    | "class_types",
+    | "methods",
     string
   > {
     return Object["fromEntries"](
@@ -171,10 +229,86 @@ export class StudioDB {
       | "single15"
       | "timezone"
       | "currency"
-      | "methods"
-      | "class_types",
+      | "methods",
       string
     >;
+  }
+  activityTypes(includeArchived = false) {
+    return this["rows"](
+      "SELECT * FROM activity_types" +
+        (includeArchived ? "" : " WHERE archived=0") +
+        " ORDER BY name",
+    );
+  }
+  typeColor(type: string) {
+    const t = this["rows"]("SELECT color FROM activity_types WHERE name=?", [type])[0];
+    return String(t?.["color"] || "#C9BFAE");
+  }
+  private checkActivityType(type: string) {
+    if (!this["rows"]("SELECT id FROM activity_types WHERE name=?", [type])["length"])
+      throw new Error("Tipo di attività non valido. Aggiungilo in Impostazioni → Tipi di attività.");
+  }
+  async saveActivityType(data: Record<string, string>, id?: string) {
+    const name = (data["name"] ?? "")["trim"]();
+    if (!name) throw new Error("Inserisci il nome del tipo di attività.");
+    const color = (data["color"] ?? "")["trim"]();
+    if (!/^#[0-9a-fA-F]{6}$/["test"](color))
+      throw new Error("Inserisci un colore HEX valido, ad esempio #D9CFBF.");
+    if (
+      this["rows"]("SELECT id FROM activity_types WHERE lower(name)=lower(?) AND id<>?", [
+        name,
+        id || "",
+      ])["length"]
+    )
+      throw new Error("Questo tipo di attività esiste già.");
+    if (id) {
+      const old = this["rows"]("SELECT name FROM activity_types WHERE id=?", [id])[0];
+      if (!old) throw new Error("Tipo di attività non trovato.");
+      await this["transaction"](() => {
+        this["db"]["run"]("UPDATE activity_types SET name=?, color=? WHERE id=?", [
+          name,
+          color,
+          id,
+        ]);
+        if (String(old["name"]) !== name) {
+          this["db"]["run"]("UPDATE classes SET type=? WHERE type=?", [name, String(old["name"])]);
+          this["db"]["run"]("UPDATE recurring_schedules SET type=? WHERE type=?", [
+            name,
+            String(old["name"]),
+          ]);
+        }
+      });
+    } else await this["run"]("INSERT INTO activity_types VALUES(?,?,?,0)", [this["id"](), name, color]);
+  }
+  async archiveActivityType(id: string) {
+    await this["run"]("UPDATE activity_types SET archived=1 WHERE id=?", [id]);
+  }
+  expenseCategories(includeArchived = false) {
+    return this["rows"](
+      "SELECT * FROM expense_categories" +
+        (includeArchived ? "" : " WHERE archived=0") +
+        " ORDER BY name",
+    );
+  }
+  async saveExpenseCategory(name: string, oldName?: string) {
+    const n = name["trim"]();
+    if (!n) throw new Error("Inserisci il nome della categoria di spesa.");
+    if (
+      this["rows"]("SELECT name FROM expense_categories WHERE lower(name)=lower(?) AND name<>?", [
+        n,
+        oldName || "",
+      ])["length"]
+    )
+      throw new Error("Questa categoria di spesa esiste già.");
+    await this["transaction"](() => {
+      if (oldName) {
+        this["db"]["run"]("UPDATE expense_categories SET name=? WHERE name=?", [n, oldName]);
+        this["db"]["run"]("UPDATE expenses SET category=? WHERE category=?", [n, oldName]);
+      } else this["db"]["run"]("INSERT INTO expense_categories(name,archived) VALUES(?,0)", [n]);
+    });
+  }
+  async archiveExpenseCategory(name: string) {
+    await this["run"]("UPDATE expense_categories SET archived=1 WHERE name=?", [name]);
   }
   async transaction(fn: () => void) {
     const before = this["db"]["export"]();
@@ -264,6 +398,7 @@ export class StudioDB {
     if ((data["date"] ?? "") < CALENDAR_START) throw new Error("Il calendario inizia a ottobre 2025.");
     if ((data["end"] ?? "") <= (data["start"] ?? ""))
       throw new Error("L'orario di fine deve essere successivo all'orario di inizio.");
+    this["checkActivityType"](data["type"] ?? "");
     await this["run"](
       `INSERT INTO classes(id,name,type,date,start,end,location,price,capacity,notes) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,type=excluded.type,date=excluded.date,start=excluded.start,end=excluded.end,location=excluded.location,price=excluded.price,capacity=excluded.capacity,notes=excluded.notes`,
       [
@@ -288,6 +423,7 @@ export class StudioDB {
       (data["end"] ?? "") <= (data["start"] ?? "")
     )
       throw new Error("Controlla l'intervallo di date e gli orari delle lezioni.");
+    this["checkActivityType"](data["type"] ?? "");
     const dates = recurrenceDates(data["from"] ?? "", data["to"] ?? "", weekdays);
     let count = 0;
     await this["transaction"](() => {
