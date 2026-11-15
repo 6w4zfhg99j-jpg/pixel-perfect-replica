@@ -43,16 +43,16 @@ export class StudioDB {
       this["db"]["run"]("BEGIN");
       try {
         this["db"]["run"](
-          "INSERT INTO membership_types VALUES ('m4','4-class membership',4,40,NULL),('m8','8-class membership',8,80,NULL)",
+          "INSERT INTO membership_types VALUES ('m4','Abbonamento 4 lezioni',4,40,NULL),('m8','Abbonamento 8 lezioni',8,80,NULL)",
         );
         for (const name of [
-          "Studio rent",
-          "Equipment",
-          "Advertising",
+          "Affitto dello studio",
+          "Attrezzatura",
+          "Pubblicità",
           "Marketing",
-          "Software subscriptions",
-          "Transportation",
-          "Other",
+          "Abbonamenti software",
+          "Trasporti",
+          "Altro",
         ])
           this["db"]["run"]("INSERT INTO expense_categories VALUES (?)", [name]);
         for (const [key, value] of Object["entries"]({
@@ -63,11 +63,42 @@ export class StudioDB {
           single15: "15",
           timezone: "Europe/Rome",
           currency: "EUR",
-          methods: "Cash,Revolut,Satispay,Other",
+          methods: "Contanti,Revolut,Satispay,Altro",
           class_types: "Yoga,Stretching",
         }))
           this["db"]["run"]("INSERT INTO settings VALUES (?,?)", [key, value]);
         this["db"]["run"]("INSERT INTO schema_versions VALUES(1,?)", [new Date()["toISOString"]()]);
+        this["db"]["run"]("COMMIT");
+      } catch (e) {
+        this["db"]["run"]("ROLLBACK");
+        throw e;
+      }
+    }
+    if (!this["rows"]("SELECT * FROM schema_versions WHERE version=2")["length"]) {
+      this["db"]["run"]("BEGIN");
+      try {
+        this["db"]["run"]("UPDATE membership_types SET name='Abbonamento 4 lezioni' WHERE id='m4' AND name='4-class membership'");
+        this["db"]["run"]("UPDATE membership_types SET name='Abbonamento 8 lezioni' WHERE id='m8' AND name='8-class membership'");
+        const categoryRenames: [string, string][] = [
+          ["Studio rent", "Affitto dello studio"],
+          ["Equipment", "Attrezzatura"],
+          ["Advertising", "Pubblicità"],
+          ["Software subscriptions", "Abbonamenti software"],
+          ["Transportation", "Trasporti"],
+          ["Other", "Altro"],
+        ];
+        for (const [from, to] of categoryRenames) {
+          this["db"]["run"]("INSERT OR IGNORE INTO expense_categories VALUES (?)", [to]);
+          this["db"]["run"]("UPDATE expenses SET category=? WHERE category=?", [to, from]);
+          this["db"]["run"]("DELETE FROM expense_categories WHERE name=?", [from]);
+        }
+        this["db"]["run"]("UPDATE payments SET category='Altro' WHERE category='Other'");
+        this["db"]["run"]("UPDATE payments SET category='Lezione singola' WHERE category='Single visit'");
+        this["db"]["run"]("UPDATE payments SET category='Abbonamento' WHERE category='Membership'");
+        this["db"]["run"]("UPDATE payments SET method='Contanti' WHERE method='Cash'");
+        this["db"]["run"]("UPDATE payments SET method='Altro' WHERE method='Other'");
+        this["db"]["run"]("UPDATE settings SET value='Contanti,Revolut,Satispay,Altro' WHERE key='methods' AND value='Cash,Revolut,Satispay,Other'");
+        this["db"]["run"]("INSERT INTO schema_versions VALUES(2,?)", [new Date()["toISOString"]()]);
         this["db"]["run"]("COMMIT");
       } catch (e) {
         this["db"]["run"]("ROLLBACK");
@@ -176,9 +207,9 @@ export class StudioDB {
     return sid;
   }
   async addClass(data: Record<string, string>, id?: string) {
-    if ((data["date"] ?? "") < CALENDAR_START) throw new Error("Calendar starts in October 2025.");
+    if ((data["date"] ?? "") < CALENDAR_START) throw new Error("Il calendario inizia a ottobre 2025.");
     if ((data["end"] ?? "") <= (data["start"] ?? ""))
-      throw new Error("End time must be after start time.");
+      throw new Error("L'orario di fine deve essere successivo all'orario di inizio.");
     await this["run"](
       `INSERT INTO classes(id,name,type,date,start,end,location,price,capacity,notes) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,type=excluded.type,date=excluded.date,start=excluded.start,end=excluded.end,location=excluded.location,price=excluded.price,capacity=excluded.capacity,notes=excluded.notes`,
       [
@@ -196,13 +227,13 @@ export class StudioDB {
     );
   }
   async recur(data: Record<string, string>, weekdays: number[]) {
-    if (!weekdays["length"]) throw new Error("Select at least one weekday.");
+    if (!weekdays["length"]) throw new Error("Seleziona almeno un giorno della settimana.");
     if (
       (data["from"] ?? "") < CALENDAR_START ||
       (data["to"] ?? "") < (data["from"] ?? "") ||
       (data["end"] ?? "") <= (data["start"] ?? "")
     )
-      throw new Error("Check your date range and class times.");
+      throw new Error("Controlla l'intervallo di date e gli orari delle lezioni.");
     const dates = recurrenceDates(data["from"] ?? "", data["to"] ?? "", weekdays);
     let count = 0;
     await this["transaction"](() => {
@@ -249,18 +280,18 @@ export class StudioDB {
   }
   async book(classId: string, studentId: string, place: number, payment: string) {
     const c = this["rows"]("SELECT * FROM classes WHERE id=?", [classId])[0];
-    if (!c || c["status"] === "Cancelled") throw new Error("This class is cancelled.");
+    if (!c || c["status"] === "Cancelled") throw new Error("Questa lezione è annullata.");
     if (
       place < 1 ||
       place > Number(c["capacity"]) ||
       this["value"]("SELECT count(*) FROM bookings WHERE class_id=? AND place>0", [classId]) >=
         Number(c["capacity"])
     )
-      throw new Error("This class is full.");
+      throw new Error("Questa lezione è al completo.");
     const m =
       payment === "membership" ? this["activeMembership"](studentId, String(c["date"])) : undefined;
     if (payment === "membership" && !m)
-      throw new Error("No active membership with available visits.");
+      throw new Error("Nessun abbonamento attivo con lezioni disponibili.");
     const id = this["id"]();
     await this["transaction"](() => {
       this["db"]["run"](
@@ -276,9 +307,9 @@ export class StudioDB {
         "SELECT b.*,a.status,c.status class_status FROM bookings b JOIN attendance a ON a.booking_id=b.id JOIN classes c ON c.id=b.class_id WHERE b.id=?",
         [id],
       )[0];
-      if (!b) throw new Error("Booking not found.");
+      if (!b) throw new Error("Prenotazione non trovata.");
       if (status === "Present" && b["class_status"] === "Cancelled")
-        throw new Error("Cancelled classes cannot record attendance.");
+        throw new Error("Non è possibile registrare presenze per una lezione annullata.");
       if (b["status"] === status) return;
       if (b["membership_id"]) {
         const mid = String(b["membership_id"]);
@@ -287,7 +318,7 @@ export class StudioDB {
           [id],
         );
         if (status === "Present" && used === 0) {
-          if (this["balance"](mid) <= 0) throw new Error("This membership has no visits left.");
+          if (this["balance"](mid) <= 0) throw new Error("Questo abbonamento non ha più lezioni disponibili.");
           this["db"]["run"]("INSERT INTO visit_transactions VALUES(?,?,?,?,?,?)", [
             this["id"](),
             mid,
@@ -321,7 +352,7 @@ export class StudioDB {
   }
   async purchase(data: Record<string, string>) {
     const m = this["rows"]("SELECT * FROM membership_types WHERE id=?", [data["type_id"] ?? ""])[0];
-    if (!m) throw new Error("Choose a membership.");
+    if (!m) throw new Error("Scegli un abbonamento.");
     await this["transaction"](() => {
       const id = this["id"]();
       this["db"]["run"]("INSERT INTO memberships VALUES(?,?,?,?,?,?,?,?,?)", [
@@ -353,17 +384,17 @@ export class StudioDB {
   }
   async payment(data: Record<string, string>, id?: string) {
     const amount = Number(data["amount"] ?? "");
-    if (!(amount > 0)) throw new Error("Enter a positive amount.");
+    if (!(amount > 0)) throw new Error("Inserisci un importo positivo.");
     if (data["booking_id"] ?? "") {
       const b = this["rows"]("SELECT * FROM bookings WHERE id=?", [data["booking_id"] ?? ""])[0];
       if (b?.["membership_id"])
-        throw new Error("Register this payment against the membership, not the attendance.");
+        throw new Error("Registra questo pagamento sull'abbonamento, non sulla lezione.");
       const paid = this["value"](
         "SELECT COALESCE(sum(amount),0) FROM payments WHERE booking_id=? AND id<>?",
         [data["booking_id"] ?? "", id || ""],
       );
       if (!b || paid + amount > Number(b["amount"]))
-        throw new Error("Payment exceeds the outstanding booking balance.");
+        throw new Error("Il pagamento supera il saldo residuo della prenotazione.");
     }
     await this["run"](
       `INSERT INTO payments(id,student_id,booking_id,membership_id,description,amount,date,method,category,notes) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET description=excluded.description,amount=excluded.amount,date=excluded.date,method=excluded.method,category=excluded.category,notes=excluded.notes`,
@@ -396,7 +427,7 @@ export class StudioDB {
     );
   }
   finance(month: string, type = "All") {
-    if (`${month}-01` < FINANCE_START) throw new Error("Financial reporting starts October 2026.");
+    if (`${month}-01` < FINANCE_START) throw new Error("I report finanziari partono da ottobre 2026.");
     const clause =
       type === "All"
         ? ""
@@ -512,9 +543,9 @@ export async function restoreStudio(studio: StudioDB, bytes: Uint8Array) {
   const candidate = new SQL["Database"](bytes);
   try {
     if (candidate["exec"]("PRAGMA integrity_check")[0]?.["values"][0]?.[0] !== "ok")
-      throw new Error("Invalid database backup.");
+      throw new Error("Backup del database non valido.");
     if (!candidate["exec"]("SELECT version FROM schema_versions WHERE version=1")["length"])
-      throw new Error("This is not a VONA Studio backup.");
+      throw new Error("Questo non è un backup di VONA Studio.");
     for (const table of ["students", "classes", "memberships", "bookings", "payments", "expenses"])
       candidate["exec"](`SELECT * FROM ${table} LIMIT 1`);
   } catch (e) {

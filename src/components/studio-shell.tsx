@@ -15,12 +15,12 @@ import { Button } from "@/components/ui/button";
 import { StudioProvider, useStudio } from "./studio-provider";
 import type { ReactNode } from "react";
 const navigation = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/calendar", label: "Calendar", icon: CalendarDays },
-  { to: "/students", label: "Students", icon: Users },
-  { to: "/memberships", label: "Memberships", icon: Ticket },
-  { to: "/finance", label: "Finance", icon: Wallet },
-  { to: "/settings", label: "Settings & backups", icon: Settings2 },
+  { to: "/", label: "Panoramica", icon: LayoutDashboard },
+  { to: "/calendar", label: "Calendario", icon: CalendarDays },
+  { to: "/students", label: "Allieve", icon: Users },
+  { to: "/memberships", label: "Abbonamenti", icon: Ticket },
+  { to: "/finance", label: "Finanze", icon: Wallet },
+  { to: "/settings", label: "Impostazioni e backup", icon: Settings2 },
 ] as const;
 export function StudioShell({ children }: { children: ReactNode }) {
   return (
@@ -31,7 +31,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
 }
 function Shell({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const title = navigation.find((n) => n.to === path)?.label || "Class attendance";
+  const title = navigation.find((n) => n.to === path)?.label || "Presenze della lezione";
   const { db, error } = useStudio();
   return (
     <div className="studio-shell">
@@ -41,12 +41,12 @@ function Shell({ children }: { children: ReactNode }) {
             VONA
           </div>
           <p className="mt-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-            Studio manager
+            Gestione dello studio
           </p>
           <div className="mt-7 border-t border-border" />
         </div>
         <p className="sidebar-label mt-7 mb-3 px-3 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          Your studio
+          Il tuo studio
         </p>
         <nav className="space-y-1">
           {navigation.map((n) => (
@@ -63,7 +63,7 @@ function Shell({ children }: { children: ReactNode }) {
             </div>
             <div>
               <p className="text-xs font-semibold">VONA Studio</p>
-              <p className="mt-1 text-[10px] text-muted-foreground">Yoga & stretching</p>
+              <p className="mt-1 text-[10px] text-muted-foreground">Yoga e stretching</p>
             </div>
             <Flower2 size={16} className="ml-auto text-primary" />
           </div>
@@ -72,7 +72,7 @@ function Shell({ children }: { children: ReactNode }) {
       <main className="studio-main">
         <header className="studio-topbar">
           <div className="desktop-breadcrumb flex items-center gap-3 text-xs text-muted-foreground">
-            <span>My studio</span>
+            <span>Il mio studio</span>
             <ChevronRight size={13} />
             <span className="text-foreground">{title}</span>
           </div>
@@ -80,15 +80,15 @@ function Shell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-2 text-[10px] text-muted-foreground">
               <i className="status-dot" />
-              {db ? "Saved locally" : "Opening studio"}
+              {db ? "Salvato in locale" : "Apertura dello studio"}
             </span>
             <span className="h-5 border-l border-border" />
-            <Button variant="ghost" size="icon" asChild title="Settings & backups">
+            <Button variant="ghost" size="icon" asChild title="Impostazioni e backup">
               <Link to="/settings">
                 <CircleHelp size={18} />
               </Link>
             </Button>
-            <Button variant="ghost" size="icon" asChild title="Membership alerts">
+            <Button variant="ghost" size="icon" asChild title="Avvisi abbonamenti">
               <Link to="/memberships">
                 <Bell size={18} />
               </Link>
@@ -97,7 +97,7 @@ function Shell({ children }: { children: ReactNode }) {
         </header>
         {error ? (
           <div role="alert" className="p-10 text-destructive">
-            Your local studio could not open: {error}. Existing data has not been replaced.
+            Impossibile aprire il tuo studio locale: {error}. I dati esistenti non sono stati sostituiti.
           </div>
         ) : (
           <div className="studio-content">{children}</div>

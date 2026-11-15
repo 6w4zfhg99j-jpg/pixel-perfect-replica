@@ -3,7 +3,7 @@ import { ClassPage } from "@/components/studio-pages";
 import { pageHead } from "@/lib/page-head";
 export const Route = createFileRoute("/classes/$id")({
   head: () =>
-    pageHead("Class attendance", "Manage VONA class bookings, payments and membership attendance."),
+    pageHead("Presenze della lezione", "Gestisci prenotazioni, pagamenti e presenze delle lezioni VONA."),
   component: Page,
 });
 function Page() {

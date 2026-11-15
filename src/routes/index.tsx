@@ -3,6 +3,6 @@ import { Dashboard } from "@/components/studio-pages";
 import { pageHead } from "@/lib/page-head";
 export const Route = createFileRoute("/")({
   head: () =>
-    pageHead("Dashboard", "A clear overview of VONA classes, students, memberships and finances."),
+    pageHead("Panoramica", "Una panoramica chiara di lezioni, allieve, abbonamenti e finanze di VONA."),
   component: Dashboard,
 });

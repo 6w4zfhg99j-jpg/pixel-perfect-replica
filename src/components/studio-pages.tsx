@@ -43,21 +43,27 @@ import {
 } from "@/lib/studio-db";
 import { toast } from "sonner";
 const months = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
+  "Gennaio",
+  "Febbraio",
+  "Marzo",
+  "Aprile",
+  "Maggio",
+  "Giugno",
+  "Luglio",
+  "Agosto",
+  "Settembre",
+  "Ottobre",
+  "Novembre",
+  "Dicembre",
 ];
+const statusLabels: Record<string, string> = {
+  Booked: "Prenotata",
+  Present: "Presente",
+  Absent: "Assente",
+  Cancelled: "Annullata",
+};
 const dateLabel = (d: string) =>
-  new Date(d + "T12:00:00")["toLocaleDateString"]("en-GB", {
+  new Date(d + "T12:00:00")["toLocaleDateString"]("it-IT", {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -172,12 +178,12 @@ export function RecordDialog({
   const types = db["rows"]("SELECT * FROM membership_types");
   const selected = types["find"]((t) => t["id"] === memberType) || types[0];
   const titles = {
-    class: record ? "Edit class" : "Add a class",
-    student: record ? "Edit student" : "Add a student",
-    payment: record ? "Edit payment" : "Register a payment",
-    expense: record ? "Edit expense" : "Add an expense",
-    purchase: "Purchase a membership",
-    type: record ? "Edit membership type" : "New membership type",
+    class: record ? "Modifica lezione" : "Aggiungi una lezione",
+    student: record ? "Modifica allieva" : "Aggiungi un'allieva",
+    payment: record ? "Modifica pagamento" : "Registra un pagamento",
+    expense: record ? "Modifica spesa" : "Aggiungi una spesa",
+    purchase: "Acquista un abbonamento",
+    type: record ? "Modifica tipo di abbonamento" : "Nuovo tipo di abbonamento",
   };
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e["preventDefault"]();
@@ -188,7 +194,7 @@ export function RecordDialog({
       if (kind === "class") {
         if (recurring) {
           const n = await db["recur"](data, days);
-          toast["success"](`${n} classes created. Existing classes were skipped.`);
+          toast["success"](`${n} lezioni create. Le lezioni esistenti sono state saltate.`);
         } else await db["addClass"](data, record ? String(record["id"]) : undefined);
       }
       if (kind === "student") await db["student"](data, record ? String(record["id"]) : undefined);
@@ -217,18 +223,18 @@ export function RecordDialog({
         );
       refresh();
       onClose();
-      toast["success"]("Saved to your studio.");
+      toast["success"]("Salvato nel tuo studio.");
     } catch (e) {
       toast["error"](
         String(e)
           ["replace"]("Error: ", "")
           ["replace"](
             "UNIQUE constraint failed: students.name, students.phone",
-            "This student already has a profile.",
+            "Questa allieva ha già un profilo.",
           )
           ["replace"](
             "UNIQUE constraint failed: bookings.class_id, bookings.student_id",
-            "This student is already booked into this class.",
+            "Questa allieva è già prenotata a questa lezione.",
           ),
       );
     } finally {
@@ -254,25 +260,25 @@ export function RecordDialog({
                     variant={!recurring ? "secondary" : "ghost"}
                     onClick={() => setRecurring(false)}
                   >
-                    One-time class
+                    Lezione singola
                   </Button>
                   <Button
                     type="button"
                     variant={recurring ? "secondary" : "ghost"}
                     onClick={() => setRecurring(true)}
                   >
-                    Recurring schedule
+                    Programma ricorrente
                   </Button>
                 </div>
               )}
-              <Field label="Class name">
+              <Field label="Nome della lezione">
                 <input
                   name="name"
                   defaultValue={String(record?.["name"] || "")}
-                  placeholder="e.g. Gentle morning yoga"
+                  placeholder="es. Yoga dolce del mattino"
                 />
               </Field>
-              <Field label="Class type">
+              <Field label="Tipo di lezione">
                 <select name="type" defaultValue={String(record?.["type"] || "Yoga")}>
                   {settings["class_types"]["split"](",")["map"]((t) => (
                     <option key={t}>{t}</option>
@@ -281,7 +287,7 @@ export function RecordDialog({
               </Field>
               {recurring ? (
                 <>
-                  <Field label="From">
+                  <Field label="Dal">
                     <input
                       required
                       type="date"
@@ -290,7 +296,7 @@ export function RecordDialog({
                       defaultValue={today["slice"](0, 7) + "-01"}
                     />
                   </Field>
-                  <Field label="Through">
+                  <Field label="Al">
                     <input
                       required
                       type="date"
@@ -304,9 +310,9 @@ export function RecordDialog({
                     />
                   </Field>
                   <div className="col-span-2">
-                    <span className="field mb-2">Repeat on</span>
+                    <span className="field mb-2">Ripeti il</span>
                     <div className="flex flex-wrap gap-2">
-                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]["map"]((d, i) => (
+                      {["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"]["map"]((d, i) => (
                         <label key={d} className="flex items-center gap-1 text-xs">
                           <input
                             type="checkbox"
@@ -326,7 +332,7 @@ export function RecordDialog({
                   </div>
                 </>
               ) : (
-                <Field label="Date">
+                <Field label="Data">
                   <input
                     required
                     type="date"
@@ -336,7 +342,7 @@ export function RecordDialog({
                   />
                 </Field>
               )}
-              <Field label="Start time">
+              <Field label="Ora di inizio">
                 <input
                   required
                   type="time"
@@ -344,7 +350,7 @@ export function RecordDialog({
                   defaultValue={String(record?.["start"] || "15:00")}
                 />
               </Field>
-              <Field label="End time">
+              <Field label="Ora di fine">
                 <input
                   required
                   type="time"
@@ -352,10 +358,10 @@ export function RecordDialog({
                   defaultValue={String(record?.["end"] || "16:00")}
                 />
               </Field>
-              <Field label="Location">
+              <Field label="Luogo">
                 <input name="location" defaultValue={String(record?.["location"] || "")} />
               </Field>
-              <Field label="Single visit price (€)">
+              <Field label="Prezzo lezione singola (€)">
                 <input
                   name="price"
                   type="number"
@@ -364,7 +370,7 @@ export function RecordDialog({
                   defaultValue={Number(record?.["price"] || settings["single15"])}
                 />
               </Field>
-              <Field label="Student places">
+              <Field label="Posti disponibili">
                 <input
                   name="capacity"
                   type="number"
@@ -374,7 +380,7 @@ export function RecordDialog({
                 />
               </Field>
               <div className="col-span-2">
-                <Field label="Notes">
+                <Field label="Note">
                   <textarea name="notes" defaultValue={String(record?.["notes"] || "")} />
                 </Field>
               </div>
@@ -383,11 +389,11 @@ export function RecordDialog({
           {kind === "student" && (
             <>
               <div className="col-span-2">
-                <Field label="Full name">
+                <Field label="Nome e cognome">
                   <input required name="name" defaultValue={String(record?.["name"] || "")} />
                 </Field>
               </div>
-              <Field label="Phone number">
+              <Field label="Numero di telefono">
                 <input name="phone" type="tel" defaultValue={String(record?.["phone"] || "")} />
               </Field>
               <Field label="Instagram">
@@ -400,7 +406,7 @@ export function RecordDialog({
               <Field label="Email">
                 <input name="email" type="email" defaultValue={String(record?.["email"] || "")} />
               </Field>
-              <Field label="Registration date">
+              <Field label="Data di registrazione">
                 <input
                   name="registered"
                   type="date"
@@ -408,7 +414,7 @@ export function RecordDialog({
                 />
               </Field>
               <div className="col-span-2">
-                <Field label="Personal notes">
+                <Field label="Note personali">
                   <textarea name="notes" defaultValue={String(record?.["notes"] || "")} />
                 </Field>
               </div>
@@ -418,7 +424,7 @@ export function RecordDialog({
           {(kind === "payment" || kind === "expense") && (
             <>
               <div className="col-span-2">
-                <Field label="Description">
+                <Field label="Descrizione">
                   <input
                     required
                     name="description"
@@ -429,7 +435,7 @@ export function RecordDialog({
                   />
                 </Field>
               </div>
-              <Field label="Amount (€)">
+              <Field label="Importo (€)">
                 <input
                   required
                   name="amount"
@@ -444,7 +450,7 @@ export function RecordDialog({
                   }
                 />
               </Field>
-              <Field label={kind === "payment" ? "Date received" : "Expense date"}>
+              <Field label={kind === "payment" ? "Data di ricezione" : "Data della spesa"}>
                 <input
                   required
                   type="date"
@@ -452,29 +458,29 @@ export function RecordDialog({
                   defaultValue={String(record?.["date"] || today)}
                 />
               </Field>
-              <Field label="Payment method">
-                <select name="method" defaultValue={String(record?.["method"] || "Cash")}>
+              <Field label="Metodo di pagamento">
+                <select name="method" defaultValue={String(record?.["method"] || "Contanti")}>
                   {settings["methods"]["split"](",")["map"]((t) => (
                     <option key={t}>{t}</option>
                   ))}
                 </select>
               </Field>
-              <Field label="Category">
-                <select name="category" defaultValue={String(record?.["category"] || "Other")}>
+              <Field label="Categoria">
+                <select name="category" defaultValue={String(record?.["category"] || "Altro")}>
                   {(kind === "expense"
                     ? db["rows"]("SELECT name FROM expense_categories")["map"]((r) =>
                         String(r["name"]),
                       )
-                    : ["Other", "Single visit", "Membership"])["map"]((t) => (
+                    : ["Altro", "Lezione singola", "Abbonamento"])["map"]((t) => (
                     <option key={t}>{t}</option>
                   ))}
                 </select>
               </Field>
               {kind === "payment" && !booking && (
                 <div className="col-span-2">
-                  <Field label="Student (optional)">
+                  <Field label="Allieva (opzionale)">
                     <select name="student_id" defaultValue={String(record?.["student_id"] || "")}>
-                      <option value="">No student</option>
+                      <option value="">Nessuna allieva</option>
                       {students["map"]((s) => (
                         <option key={String(s["id"])} value={String(s["id"])}>
                           {s["name"]}
@@ -485,7 +491,7 @@ export function RecordDialog({
                 </div>
               )}
               <div className="col-span-2">
-                <Field label="Notes">
+                <Field label="Note">
                   <textarea name="notes" defaultValue={String(record?.["notes"] || "")} />
                 </Field>
               </div>
@@ -494,9 +500,9 @@ export function RecordDialog({
           {kind === "purchase" && (
             <>
               <div className="col-span-2">
-                <Field label="Student">
+                <Field label="Allieva">
                   <select required name="student_id">
-                    <option value="">Select student</option>
+                    <option value="">Seleziona un'allieva</option>
                     {students["map"]((s) => (
                       <option key={String(s["id"])} value={String(s["id"])}>
                         {s["name"]}
@@ -505,7 +511,7 @@ export function RecordDialog({
                   </select>
                 </Field>
               </div>
-              <Field label="Membership">
+              <Field label="Abbonamento">
                 <select
                   name="type_id"
                   value={memberType}
@@ -518,7 +524,7 @@ export function RecordDialog({
                   ))}
                 </select>
               </Field>
-              <Field label="Total price (€)">
+              <Field label="Prezzo totale (€)">
                 <input
                   key={memberType + "price"}
                   required
@@ -529,10 +535,10 @@ export function RecordDialog({
                   defaultValue={Number(selected?.["price"] || 0)}
                 />
               </Field>
-              <Field label="Purchase date">
+              <Field label="Data di acquisto">
                 <input required name="purchased" type="date" defaultValue={today} />
               </Field>
-              <Field label="Expiration (optional)">
+              <Field label="Scadenza (opzionale)">
                 <input
                   key={memberType + "expires"}
                   name="expires"
@@ -549,7 +555,7 @@ export function RecordDialog({
                   }
                 />
               </Field>
-              <Field label="Amount received (€)">
+              <Field label="Importo ricevuto (€)">
                 <input
                   key={memberType + "paid"}
                   required
@@ -560,27 +566,27 @@ export function RecordDialog({
                   defaultValue={Number(selected?.["price"] || 0)}
                 />
               </Field>
-              <Field label="Actual payment date">
+              <Field label="Data effettiva del pagamento">
                 <input required name="payment_date" type="date" defaultValue={today} />
               </Field>
-              <Field label="Payment method">
+              <Field label="Metodo di pagamento">
                 <select name="method">
                   {settings["methods"]["split"](",")["map"]((t) => (
                     <option key={t}>{t}</option>
                   ))}
                 </select>
               </Field>
-              <Field label="Notes">
+              <Field label="Note">
                 <input name="notes" />
               </Field>
             </>
           )}
           {kind === "type" && (
             <>
-              <Field label="Name">
+              <Field label="Nome">
                 <input required name="name" defaultValue={String(record?.["name"] || "")} />
               </Field>
-              <Field label="Visits included">
+              <Field label="Lezioni incluse">
                 <input
                   required
                   type="number"
@@ -589,7 +595,7 @@ export function RecordDialog({
                   defaultValue={Number(record?.["visits"] || 4)}
                 />
               </Field>
-              <Field label="Price (€)">
+              <Field label="Prezzo (€)">
                 <input
                   required
                   type="number"
@@ -599,7 +605,7 @@ export function RecordDialog({
                   defaultValue={Number(record?.["price"] || 40)}
                 />
               </Field>
-              <Field label="Validity (days, optional)">
+              <Field label="Validità (giorni, opzionale)">
                 <input
                   type="number"
                   min="1"
@@ -611,20 +617,26 @@ export function RecordDialog({
           )}
           <div className="col-span-2 mt-3 flex justify-end gap-2 border-t border-border pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              Annulla
             </Button>
             <Button disabled={busy} type="submit">
               <Check size={15} />
               {busy
-                ? "Saving…"
+                ? "Salvataggio…"
                 : kind === "class" && recurring
-                  ? "Create schedule"
-                  : "Save " +
+                  ? "Crea programma"
+                  : "Salva " +
                     (kind === "purchase"
-                      ? "membership"
+                      ? "abbonamento"
                       : kind === "type"
-                        ? "membership type"
-                        : kind)}
+                        ? "tipo di abbonamento"
+                        : kind === "class"
+                          ? "lezione"
+                          : kind === "student"
+                            ? "allieva"
+                            : kind === "payment"
+                              ? "pagamento"
+                              : "spesa")}
             </Button>
           </div>
         </form>
@@ -663,31 +675,31 @@ export function Dashboard() {
     <>
       <Header
         eyebrow={dateLabel(today)}
-        title="Your studio, at a glance"
-        subtitle="A little clarity for a more mindful day."
+        title="Il tuo studio, a colpo d'occhio"
+        subtitle="Un po' di chiarezza per una giornata più consapevole."
       >
         <Button onClick={() => setDialog("class")}>
           <Plus />
-          Add a class
+          Aggiungi una lezione
         </Button>
       </Header>
       <div className="dashboard-banner mb-7 flex items-center justify-between gap-4">
         <div>
           <span className="text-[9px] font-semibold uppercase tracking-[0.13em] text-primary">
-            Space to grow
+            Spazio per crescere
           </span>
-          <h2 className="mt-2 font-display text-[28px] leading-tight">Welcome to your studio.</h2>
+          <h2 className="mt-2 font-display text-[28px] leading-tight">Benvenuta nel tuo studio.</h2>
           <p className="mt-2 text-xs text-muted-foreground">
             {active
-              ? "Every class, every student, every small step forward."
-              : "A fresh start. Your next chapter begins with your first class."}
+              ? "Ogni lezione, ogni allieva, ogni piccolo passo avanti."
+              : "Un nuovo inizio. Il tuo prossimo capitolo inizia con la prima lezione."}
           </p>
           <Button
             variant="link"
             className="mt-2 h-auto px-0 text-xs"
             onClick={() => setDialog("class")}
           >
-            Plan your next class <ArrowUpRight size={14} />
+            Pianifica la prossima lezione <ArrowUpRight size={14} />
           </Button>
         </div>
         <img
@@ -700,27 +712,27 @@ export function Dashboard() {
       </div>
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <Metric
-          label="Classes today"
+          label="Lezioni di oggi"
           value={classes["length"]}
-          detail={`${db?.["value"]("SELECT count(*) FROM bookings b JOIN classes c ON c.id=b.class_id WHERE c.date=?", [today]) || 0} students booked`}
+          detail={`${db?.["value"]("SELECT count(*) FROM bookings b JOIN classes c ON c.id=b.class_id WHERE c.date=?", [today]) || 0} allieve prenotate`}
           icon={CalendarDays}
         />
         <Metric
-          label="Active students"
+          label="Allieve attive"
           value={active}
-          detail="Your growing community"
+          detail="La tua community che cresce"
           icon={Users}
         />
         <Metric
-          label="Active memberships"
+          label="Abbonamenti attivi"
           value={memberships["length"]}
-          detail={`${low["length"]} with 2 visits or fewer`}
+          detail={`${low["length"]} con 2 lezioni o meno`}
           icon={Ticket}
         />
         <Metric
-          label="Monthly income"
+          label="Incasso mensile"
           value={euro(fin["income"])}
-          detail={`${months[Number(today["slice"](5, 7)) - 1]} ${today["slice"](0, 4)} · received payments`}
+          detail={`${months[Number(today["slice"](5, 7)) - 1]} ${today["slice"](0, 4)} · pagamenti ricevuti`}
           icon={Wallet}
           tone="success"
         />
@@ -729,14 +741,14 @@ export function Dashboard() {
         <section className="panel">
           <div className="flex items-center justify-between">
             <h2 className="section-heading">
-              Today’s classes{" "}
+              Lezioni di oggi{" "}
               <span className="ml-2 font-sans text-xs text-muted-foreground">
                 {classes["length"]}
               </span>
             </h2>
             <Button variant="link" asChild className="h-auto px-0 text-xs">
               <Link to="/calendar">
-                View calendar <ArrowUpRight />
+                Vedi il calendario <ArrowUpRight />
               </Link>
             </Button>
           </div>
@@ -747,7 +759,7 @@ export function Dashboard() {
               ))}
             </div>
           ) : (
-            <Empty title="A quiet day at the studio" description="No classes scheduled for today.">
+            <Empty title="Una giornata tranquilla in studio" description="Nessuna lezione in programma per oggi.">
               <Button
                 variant="outline"
                 size="sm"
@@ -755,44 +767,44 @@ export function Dashboard() {
                 onClick={() => setDialog("class")}
               >
                 <Plus />
-                Schedule a class
+                Programma una lezione
               </Button>
             </Empty>
           )}
           <div className="mt-1 border-t border-border pt-5">
             <div className="flex justify-between">
-              <h3 className="text-xs font-semibold">Coming up next</h3>
-              <span className="text-[10px] text-muted-foreground">Upcoming classes</span>
+              <h3 className="text-xs font-semibold">Prossimamente</h3>
+              <span className="text-[10px] text-muted-foreground">Lezioni in arrivo</span>
             </div>
             {upcoming["length"] ? (
               upcoming["map"]((c) => <ClassLine key={String(c["id"])} c={c} />)
             ) : (
               <div className="flex items-center gap-3 py-6 text-xs text-muted-foreground">
                 <Clock3 size={17} />
-                <span>No upcoming classes yet.</span>
+                <span>Ancora nessuna lezione in arrivo.</span>
               </div>
             )}
           </div>
         </section>
         <section className="panel">
-          <h2 className="section-heading">Quick actions</h2>
+          <h2 className="section-heading">Azioni rapide</h2>
           <div className="mt-5 grid grid-cols-2 gap-3">
             {(
               [
-                { kind: "student", icon: Users, title: "Add student", desc: "Grow your community" },
+                { kind: "student", icon: Users, title: "Aggiungi allieva", desc: "Fai crescere la community" },
                 {
                   kind: "purchase",
                   icon: Ticket,
-                  title: "Sell membership",
-                  desc: "A new commitment",
+                  title: "Vendi abbonamento",
+                  desc: "Un nuovo impegno",
                 },
                 {
                   kind: "payment",
                   icon: ArrowDownLeft,
-                  title: "Register payment",
-                  desc: "Keep things balanced",
+                  title: "Registra pagamento",
+                  desc: "Mantieni tutto in equilibrio",
                 },
-                { kind: "expense", icon: Wallet, title: "Add expense", desc: "Track studio costs" },
+                { kind: "expense", icon: Wallet, title: "Aggiungi spesa", desc: "Tieni traccia dei costi" },
               ] as const
             )["map"]((a) => (
               <Button
@@ -809,21 +821,21 @@ export function Dashboard() {
           </div>
           <div className="mt-6 border-t border-border pt-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold">Needs a little attention</h3>
+              <h3 className="text-xs font-semibold">Richiede un po' di attenzione</h3>
               <span className="tag warning">{unpaid["length"] + low["length"]}</span>
             </div>
             {unpaid["length"] + low["length"] === 0 ? (
               <p className="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground">
                 <Check size={15} className="text-success" />
-                You’re all caught up. A lovely place to be.
+                Sei in pari. Un bel traguardo.
               </p>
             ) : (
               <>
                 <Link to="/finance" className="mt-4 block text-xs text-warning">
-                  {unpaid["length"]} unpaid bookings →
+                  {unpaid["length"]} prenotazioni non pagate →
                 </Link>
                 <Link to="/memberships" className="mt-3 block text-xs text-primary">
-                  {low["length"]} memberships running low →
+                  {low["length"]} abbonamenti quasi esauriti →
                 </Link>
               </>
             )}
@@ -833,14 +845,14 @@ export function Dashboard() {
       <section className="panel mt-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="section-heading">A balanced studio</h2>
+            <h2 className="section-heading">Uno studio in equilibrio</h2>
             <p className="mt-1 text-[10px] text-muted-foreground">
-              Your finances for {months[Number(today["slice"](5, 7)) - 1]} {today["slice"](0, 4)}
+              Le tue finanze di {months[Number(today["slice"](5, 7)) - 1]} {today["slice"](0, 4)}
             </p>
           </div>
           <Button variant="link" asChild className="h-auto px-0 text-xs">
             <Link to="/finance">
-              Explore finances <ArrowUpRight />
+              Esplora le finanze <ArrowUpRight />
             </Link>
           </Button>
         </div>
@@ -848,32 +860,32 @@ export function Dashboard() {
           <div>
             <div className="mb-4 flex items-center gap-5 text-[10px] text-muted-foreground">
               <span>
-                <span className="tag">Income</span>
+                <span className="tag">Entrate</span>
               </span>
               <span>
-                <span className="tag stretch">Expenses</span>
+                <span className="tag stretch">Uscite</span>
               </span>
             </div>
             <YearChart year={Number(today["slice"](0, 4))} />
           </div>
           <div className="grid grid-cols-3 gap-3 lg:content-center">
             <div className="border-l border-border pl-4">
-              <p className="text-[10px] text-muted-foreground">Income</p>
+              <p className="text-[10px] text-muted-foreground">Entrate</p>
               <p className="mt-2 font-display text-2xl">{euro(fin["income"])}</p>
             </div>
             <div className="border-l border-border pl-4">
-              <p className="text-[10px] text-muted-foreground">Expenses</p>
+              <p className="text-[10px] text-muted-foreground">Uscite</p>
               <p className="mt-2 font-display text-2xl">{euro(fin["expenses"])}</p>
             </div>
             <div className="border-l border-border pl-4">
-              <p className="text-[10px] text-muted-foreground">Net profit</p>
+              <p className="text-[10px] text-muted-foreground">Utile netto</p>
               <p className="mt-2 font-display text-2xl text-success">{euro(fin["profit"])}</p>
             </div>
           </div>
         </div>
       </section>
       <footer className="mt-9 flex justify-between border-t border-border pt-5 text-[9px] text-muted-foreground">
-        <span>Made for a mindful studio.</span>
+        <span>Fatto per uno studio consapevole.</span>
         <span>VONA Studio Manager · Europe/Rome</span>
       </footer>
       {dialog && <RecordDialog kind={dialog} open onClose={() => setDialog(null)} />}
@@ -917,12 +929,12 @@ function YearChart({ year }: { year: number }) {
             <div
               className="chart-bar"
               style={{ height: `${(d["income"] / max) * 100}%` }}
-              title={`${months[i]} income: ${euro(d["income"])}`}
+              title={`Entrate di ${months[i]}: ${euro(d["income"])}`}
             />
             <div
               className="chart-bar expense"
               style={{ height: `${(d["expenses"] / max) * 100}%` }}
-              title={`${months[i]} expenses: ${euro(d["expenses"])}`}
+              title={`Uscite di ${months[i]}: ${euro(d["expenses"])}`}
             />
           </div>
         ))}
@@ -938,13 +950,13 @@ function YearChart({ year }: { year: number }) {
 export function CalendarPage() {
   const { db } = useStudio();
   const [month, setMonth] = useState(romeToday()["slice"](0, 7));
-  const [view, setView] = useState("Month");
-  const [type, setType] = useState("All");
+  const [view, setView] = useState("Mese");
+  const [type, setType] = useState("Tutte");
   const [dialog, setDialog] = useState(false);
   const [focus, setFocus] = useState(romeToday());
   const classes =
     (db?.["rows"]("SELECT * FROM classes WHERE substr(date,1,7)=? ORDER BY date,start", [month]) ||
-      [])["filter"]((c) => type === "All" || c["type"] === type) || [];
+      [])["filter"]((c) => type === "Tutte" || c["type"] === type) || [];
   const year = Number(month["slice"](0, 4)),
     mi = Number(month["slice"](5, 7)) - 1;
   const first = new Date(year, mi, 1);
@@ -967,9 +979,9 @@ export function CalendarPage() {
   const weekEnd = new Date(weekStart);
   weekEnd["setDate"](weekEnd["getDate"]() + 6);
   const shown = classes["filter"]((c) =>
-    view === "Day"
+    view === "Giorno"
       ? c["date"] === focus
-      : view === "Week"
+      : view === "Settimana"
         ? new Date(String(c["date"]) + "T12:00:00") >= weekStart &&
           new Date(String(c["date"]) + "T12:00:00") <= weekEnd
         : true,
@@ -977,13 +989,13 @@ export function CalendarPage() {
   return (
     <>
       <Header
-        eyebrow="Make space for movement"
-        title="Calendar"
-        subtitle="Your classes, thoughtfully planned."
+        eyebrow="Fai spazio al movimento"
+        title="Calendario"
+        subtitle="Le tue lezioni, pianificate con cura."
       >
         <Button onClick={() => setDialog(true)}>
           <Plus />
-          Add a class
+          Aggiungi una lezione
         </Button>
       </Header>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -991,7 +1003,7 @@ export function CalendarPage() {
           <Button
             size="icon"
             variant="outline"
-            title="Previous month"
+            title="Mese precedente"
             disabled={month === "2025-10"}
             onClick={() => shift(-1)}
           >
@@ -1000,7 +1012,7 @@ export function CalendarPage() {
           <h2 className="section-heading min-w-40 text-center">
             {months[mi]} {year}
           </h2>
-          <Button size="icon" variant="outline" title="Next month" onClick={() => shift(1)}>
+          <Button size="icon" variant="outline" title="Mese successivo" onClick={() => shift(1)}>
             <ChevronRight />
           </Button>
           <Button
@@ -1011,12 +1023,12 @@ export function CalendarPage() {
               setFocus(romeToday());
             }}
           >
-            Today
+            Oggi
           </Button>
         </div>
         <div className="flex gap-2">
           <input
-            aria-label="Choose month"
+            aria-label="Scegli il mese"
             type="month"
             min="2025-10"
             className="studio-input max-w-40"
@@ -1024,12 +1036,12 @@ export function CalendarPage() {
             onChange={(e) => e["target"]["value"] >= "2025-10" && setMonth(e["target"]["value"])}
           />
           <select
-            aria-label="Class type filter"
+            aria-label="Filtro per tipo di lezione"
             className="studio-input max-w-32"
             value={type}
             onChange={(e) => setType(e["target"]["value"])}
           >
-            <option>All</option>
+            <option>Tutte</option>
             <option>Yoga</option>
             <option>Stretching</option>
           </select>
@@ -1037,7 +1049,7 @@ export function CalendarPage() {
       </div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1 rounded-md border border-border bg-card p-1">
-          {["Month", "Week", "Day", "List"]["map"]((v) => (
+          {["Mese", "Settimana", "Giorno", "Elenco"]["map"]((v) => (
             <Button
               key={v}
               variant={v === view ? "secondary" : "ghost"}
@@ -1059,10 +1071,10 @@ export function CalendarPage() {
           </span>
         </div>
       </div>
-      {view === "Month" ? (
+      {view === "Mese" ? (
         <>
           <div className="grid grid-cols-7 text-center text-[10px] text-muted-foreground mb-3">
-            {["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]["map"]((d) => (
+            {["LUN", "MAR", "MER", "GIO", "VEN", "SAB", "DOM"]["map"]((d) => (
               <span key={d}>{d}</span>
             ))}
           </div>
@@ -1085,7 +1097,7 @@ export function CalendarPage() {
                     className={"class-chip " + (x["type"] === "Stretching" ? "stretch" : "")}
                   >
                     <span>{x["start"]}</span> · {x["name"]}
-                    {x["status"] === "Cancelled" ? " (cancelled)" : ""}
+                    {x["status"] === "Cancelled" ? " (annullata)" : ""}
                   </Link>
                 ))}
               </div>
@@ -1095,7 +1107,7 @@ export function CalendarPage() {
       ) : (
         <>
           <div className="mb-5 max-w-xs">
-            <Field label={view === "Week" ? "Week containing" : "Date"}>
+            <Field label={view === "Settimana" ? "Settimana del" : "Data"}>
               <input
                 type="date"
                 min={CALENDAR_START}
@@ -1111,19 +1123,19 @@ export function CalendarPage() {
             shown["map"]((c) => <ClassLine key={String(c["id"])} c={c} />)
           ) : (
             <Empty
-              title="No classes in this view"
-              description="A clear calendar, ready for your next class."
+              title="Nessuna lezione in questa vista"
+              description="Un calendario libero, pronto per la tua prossima lezione."
             >
               <Button variant="outline" onClick={() => setDialog(true)}>
                 <Plus />
-                Add a class
+                Aggiungi una lezione
               </Button>
             </Empty>
           )}
         </>
       )}
       <p className="mt-5 text-[10px] text-muted-foreground">
-        {classes["length"]} classes this month · Europe/Rome
+        {classes["length"]} lezioni questo mese · Europe/Rome
       </p>
       {dialog && <RecordDialog kind="class" open onClose={() => setDialog(false)} />}
     </>
@@ -1146,9 +1158,9 @@ export function StudentsPage() {
   return (
     <>
       <Header
-        eyebrow="Your community"
-        title="Students"
-        subtitle="Every student has a story. Keep it all in one place."
+        eyebrow="La tua community"
+        title="Allieve"
+        subtitle="Ogni allieva ha una storia. Tieni tutto in un unico posto."
       >
         <Button
           onClick={() => {
@@ -1157,7 +1169,7 @@ export function StudentsPage() {
           }}
         >
           <Plus />
-          Add student
+          Aggiungi allieva
         </Button>
       </Header>
       <div className="mb-6 flex gap-3">
@@ -1165,20 +1177,20 @@ export function StudentsPage() {
           <Search className="absolute left-3 top-3 text-muted-foreground" size={15} />
           <input
             className="studio-input pl-10"
-            aria-label="Search students"
-            placeholder="Search name, phone or Instagram…"
+            aria-label="Cerca allieve"
+            placeholder="Cerca nome, telefono o Instagram…"
             value={search}
             onChange={(e) => setSearch(e["target"]["value"])}
           />
         </div>
         <select
           className="studio-input max-w-32"
-          aria-label="Student status"
+          aria-label="Stato allieva"
           value={status}
           onChange={(e) => setStatus(e["target"]["value"])}
         >
-          <option>Active</option>
-          <option>Archived</option>
+          <option value="Active">Attive</option>
+          <option value="Archived">Archiviate</option>
         </select>
       </div>
       {rows["length"] ? (
@@ -1186,10 +1198,10 @@ export function StudentsPage() {
           <table className="studio-table">
             <thead>
               <tr>
-                <th>Student</th>
-                <th>Contact</th>
-                <th>Membership</th>
-                <th>Registered</th>
+                <th>Allieva</th>
+                <th>Contatti</th>
+                <th>Abbonamento</th>
+                <th>Registrata</th>
                 <th />
               </tr>
             </thead>
@@ -1215,16 +1227,16 @@ export function StudentsPage() {
                     <td>
                       {m ? (
                         <span className="tag success">
-                          {db?.["balance"](String(m["id"]))} visits remaining
+                          {db?.["balance"](String(m["id"]))} lezioni rimanenti
                         </span>
                       ) : (
-                        <span className="text-muted-foreground">No active membership</span>
+                        <span className="text-muted-foreground">Nessun abbonamento attivo</span>
                       )}
                     </td>
                     <td>{dateLabel(String(s["registered"]))}</td>
                     <td>
                       <Button
-                        title="Edit student"
+                        title="Modifica allieva"
                         size="icon"
                         variant="ghost"
                         onClick={() => {
@@ -1235,14 +1247,14 @@ export function StudentsPage() {
                         <Pencil />
                       </Button>
                       <Button
-                        title={status === "Active" ? "Archive student" : "Restore student"}
+                        title={status === "Active" ? "Archivia allieva" : "Ripristina allieva"}
                         size="icon"
                         variant="ghost"
                         onClick={async () => {
                           if (
                             !db ||
                             !confirm(
-                              `${status === "Active" ? "Archive" : "Restore"} ${s["name"]}? All history will be preserved.`,
+                              `${status === "Active" ? "Archiviare" : "Ripristinare"} ${s["name"]}? Tutta la cronologia sarà preservata.`,
                             )
                           )
                             return;
@@ -1265,12 +1277,12 @@ export function StudentsPage() {
       ) : (
         <Empty
           icon={Users}
-          title={search ? "No matching students" : "Your community starts here"}
-          description="No student records yet."
+          title={search ? "Nessuna allieva corrispondente" : "La tua community inizia qui"}
+          description="Ancora nessuna allieva registrata."
         >
           <Button variant="outline" onClick={() => setDialog(true)}>
             <Plus />
-            Add your first student
+            Aggiungi la tua prima allieva
           </Button>
         </Empty>
       )}
@@ -1282,7 +1294,7 @@ export function StudentsPage() {
           <DialogHeader>
             <DialogTitle className="font-display text-3xl">{profile?.["name"]}</DialogTitle>
             <DialogDescription>
-              {profile?.["phone"]} {profile?.["instagram"]} · Registered {profile?.["registered"]}
+              {profile?.["phone"]} {profile?.["instagram"]} · Registrata il {profile?.["registered"]}
             </DialogDescription>
           </DialogHeader>
           {profile && db && (
@@ -1290,7 +1302,7 @@ export function StudentsPage() {
               <p className="text-xs text-muted-foreground">
                 {profile["email"]} {profile["notes"]}
               </p>
-              <h3 className="section-heading mt-3">Membership history</h3>
+              <h3 className="section-heading mt-3">Cronologia abbonamenti</h3>
               {db["rows"]("SELECT * FROM memberships WHERE student_id=? ORDER BY purchased DESC", [
                 String(profile["id"]),
               ])["map"]((m) => (
@@ -1300,14 +1312,14 @@ export function StudentsPage() {
                 >
                   <span>
                     {m["name"]} · {m["purchased"]}
-                    {m["expires"] ? " · expires " + m["expires"] : ""}
+                    {m["expires"] ? " · scade il " + m["expires"] : ""}
                   </span>
                   <span>
-                    {db["balance"](String(m["id"]))}/{m["visits"]} visits
+                    {db["balance"](String(m["id"]))}/{m["visits"]} lezioni
                   </span>
                 </div>
               ))}
-              <h3 className="section-heading mt-3">Attendance history</h3>
+              <h3 className="section-heading mt-3">Cronologia presenze</h3>
               {db["bookings"]()
                 ["filter"]((b) => b["student_id"] === profile["id"])
                 ["map"]((b) => (
@@ -1318,10 +1330,10 @@ export function StudentsPage() {
                     <span>
                       {b["date"]} · {b["class_name"]}
                     </span>
-                    <span className="tag">{b["status"]}</span>
+                    <span className="tag">{statusLabels[String(b["status"])] || String(b["status"])}</span>
                   </div>
                 ))}
-              <h3 className="section-heading mt-3">Payment history</h3>
+              <h3 className="section-heading mt-3">Cronologia pagamenti</h3>
               {db["rows"]("SELECT * FROM payments WHERE student_id=? ORDER BY date DESC", [
                 String(profile["id"]),
               ])["map"]((p) => (
@@ -1336,7 +1348,7 @@ export function StudentsPage() {
                 </div>
               ))}
               <p className="mt-3 text-xs">
-                Outstanding bookings:{" "}
+                Prenotazioni da saldare:{" "}
                 {euro(
                   db["bookings"]()
                     ["filter"]((b) => b["student_id"] === profile["id"] && !b["membership_id"])
@@ -1368,9 +1380,9 @@ export function MembershipsPage() {
   return (
     <>
       <Header
-        eyebrow="A practice that lasts"
-        title="Memberships"
-        subtitle="Small commitments. Meaningful progress."
+        eyebrow="Una pratica che dura nel tempo"
+        title="Abbonamenti"
+        subtitle="Piccoli impegni. Progressi significativi."
       >
         <Button
           variant="outline"
@@ -1380,11 +1392,11 @@ export function MembershipsPage() {
           }}
         >
           <Plus />
-          New type
+          Nuovo tipo
         </Button>
         <Button onClick={() => setKind("purchase")}>
           <Plus />
-          Sell membership
+          Vendi abbonamento
         </Button>
       </Header>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -1395,7 +1407,7 @@ export function MembershipsPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                title="Edit membership type"
+                title="Modifica tipo di abbonamento"
                 onClick={() => {
                   setEdit(t);
                   setKind("type");
@@ -1408,7 +1420,7 @@ export function MembershipsPage() {
             <div className="mt-3 flex justify-between items-end">
               <span className="font-display text-3xl">{euro(Number(t["price"]))}</span>
               <span className="text-xs text-muted-foreground">
-                {t["visits"]} visits · {t["validity"] ? t["validity"] + " days" : "No expiry"}
+                {t["visits"]} lezioni · {t["validity"] ? t["validity"] + " giorni" : "Senza scadenza"}
               </span>
             </div>
           </div>
@@ -1416,11 +1428,11 @@ export function MembershipsPage() {
       </div>
       <section className="panel mt-8">
         <div className="flex flex-wrap justify-between gap-4">
-          <h2 className="section-heading">Student memberships</h2>
+          <h2 className="section-heading">Abbonamenti delle allieve</h2>
           <input
             className="studio-input max-w-xs"
-            aria-label="Search memberships"
-            placeholder="Search student…"
+            aria-label="Cerca abbonamenti"
+            placeholder="Cerca allieva…"
             value={search}
             onChange={(e) => setSearch(e["target"]["value"])}
           />
@@ -1430,12 +1442,12 @@ export function MembershipsPage() {
             <table className="studio-table">
               <thead>
                 <tr>
-                  <th>Student</th>
-                  <th>Membership</th>
-                  <th>Purchased</th>
-                  <th>Remaining visits</th>
-                  <th>Received</th>
-                  <th>Expiry</th>
+                  <th>Allieva</th>
+                  <th>Abbonamento</th>
+                  <th>Acquistato</th>
+                  <th>Lezioni rimanenti</th>
+                  <th>Ricevuto</th>
+                  <th>Scadenza</th>
                   <th />
                 </tr>
               </thead>
@@ -1466,13 +1478,13 @@ export function MembershipsPage() {
                             onClick={async () => {
                               if (!db) return;
                               const amount = prompt(
-                                "Amount received (€)",
+                                "Importo ricevuto (€)",
                                 String(Number(m["price"]) - paid),
                               );
                               if (!amount) return;
                               const method = prompt(
-                                "Payment method (Cash, Revolut, Satispay, Other)",
-                                "Cash",
+                                "Metodo di pagamento (Contanti, Revolut, Satispay, Altro)",
+                                "Contanti",
                               );
                               if (!method) return;
                               try {
@@ -1483,7 +1495,7 @@ export function MembershipsPage() {
                                   amount,
                                   date: romeToday(),
                                   method,
-                                  category: "Membership",
+                                  category: "Abbonamento",
                                 });
                                 refresh();
                               } catch (e) {
@@ -1491,7 +1503,7 @@ export function MembershipsPage() {
                               }
                             }}
                           >
-                            Record payment
+                            Registra pagamento
                           </Button>
                         )}
                       </td>
@@ -1502,17 +1514,17 @@ export function MembershipsPage() {
                           size="sm"
                           onClick={async () => {
                             if (!db) return;
-                            const delta = prompt("Visit correction (+1 or -1, for example)");
+                            const delta = prompt("Correzione lezioni (ad esempio +1 o -1)");
                             if (
                               !delta ||
                               !Number["isInteger"](Number(delta)) ||
                               Number(delta) === 0
                             )
                               return;
-                            const reason = prompt("Reason for this correction (required)");
+                            const reason = prompt("Motivo della correzione (obbligatorio)");
                             if (!reason?.["trim"]()) return;
                             if (balance + Number(delta) < 0) {
-                              toast["error"]("Visits cannot be negative.");
+                              toast["error"]("Le lezioni non possono essere negative.");
                               return;
                             }
                             await db["run"]("INSERT INTO visit_transactions VALUES(?,?,?,?,?,?)", [
@@ -1526,7 +1538,7 @@ export function MembershipsPage() {
                             refresh();
                           }}
                         >
-                          Correct visits
+                          Correggi lezioni
                         </Button>
                       </td>
                     </tr>
@@ -1534,7 +1546,7 @@ export function MembershipsPage() {
                 })}
               </tbody>
             </table>
-            <h3 className="section-heading mt-6">Visit audit trail</h3>
+            <h3 className="section-heading mt-6">Registro delle lezioni</h3>
             {(db?.["rows"](
               "SELECT v.*,s.name FROM visit_transactions v JOIN memberships m ON m.id=v.membership_id JOIN students s ON s.id=m.student_id ORDER BY created DESC LIMIT 20",
             ) || [])["map"]((v) => (
@@ -1551,12 +1563,12 @@ export function MembershipsPage() {
         ) : (
           <Empty
             icon={Ticket}
-            title="Room for a regular practice"
-            description="No memberships sold yet."
+            title="Spazio per una pratica regolare"
+            description="Ancora nessun abbonamento venduto."
           >
             <Button variant="outline" onClick={() => setKind("purchase")}>
               <Plus />
-              Sell your first membership
+              Vendi il tuo primo abbonamento
             </Button>
           </Empty>
         )}
@@ -1577,15 +1589,15 @@ export function FinancePage() {
   const [month, setMonth] = useState(
     romeToday()["slice"](0, 7) < "2026-10" ? "2026-10" : romeToday()["slice"](0, 7),
   );
-  const [tab, setTab] = useState("Income");
-  const [filter, setFilter] = useState("All");
+  const [tab, setTab] = useState("Entrate");
+  const [filter, setFilter] = useState("Tutte");
   const [kind, setKind] = useState<"payment" | "expense" | null>(null);
   const [edit, setEdit] = useState<Row | undefined>();
   const [booking, setBooking] = useState<Row | undefined>();
   const fin = db?.["finance"](month, filter) || { income: 0, expenses: 0, profit: 0, payments: 0 };
   const rows =
     db?.["rows"](
-      `SELECT * FROM ${tab === "Expenses" ? "expenses" : "payments"} WHERE substr(date,1,7)=? ORDER BY date DESC`,
+      `SELECT * FROM ${tab === "Uscite" ? "expenses" : "payments"} WHERE substr(date,1,7)=? ORDER BY date DESC`,
       [month],
     ) || [];
   const unpaid = (db?.["bookings"]() || [])["filter"](
@@ -1593,7 +1605,7 @@ export function FinancePage() {
       !b["membership_id"] &&
       Number(b["paid"]) < Number(b["amount"]) &&
       String(b["date"])["slice"](0, 7) === month &&
-      (filter === "All" || b["type"] === filter),
+      (filter === "Tutte" || b["type"] === filter),
   );
   async function exportFinance() {
     if (!db) return;
@@ -1605,21 +1617,21 @@ export function FinancePage() {
         XLSX["utils"]["json_to_sheet"](
           db["rows"](`SELECT * FROM ${t} WHERE substr(date,1,7)=?`, [month]),
         ),
-        t === "payments" ? "Income" : "Expenses",
+        t === "payments" ? "Entrate" : "Uscite",
       );
     XLSX["utils"]["book_append_sheet"](
       wb,
       XLSX["utils"]["json_to_sheet"]([{ month, ...fin }]),
-      "Summary",
+      "Riepilogo",
     );
     XLSX["writeFile"](wb, `VONA-finance-${month}.xlsx`);
   }
   return (
     <>
       <Header
-        eyebrow="Mindful business"
-        title="Finance"
-        subtitle="A clear picture of what comes in, and what goes out."
+        eyebrow="Gestione consapevole"
+        title="Finanze"
+        subtitle="Un quadro chiaro di ciò che entra e di ciò che esce."
       >
         <Button
           variant="outline"
@@ -1629,7 +1641,7 @@ export function FinancePage() {
           }}
         >
           <Plus />
-          Add expense
+          Aggiungi spesa
         </Button>
         <Button
           onClick={() => {
@@ -1639,13 +1651,13 @@ export function FinancePage() {
           }}
         >
           <Plus />
-          Register payment
+          Registra pagamento
         </Button>
       </Header>
       <div className="mb-6 flex flex-wrap justify-between gap-3">
         <div className="flex gap-3">
           <input
-            aria-label="Finance month"
+            aria-label="Mese delle finanze"
             type="month"
             min="2026-10"
             className="studio-input max-w-44"
@@ -1653,57 +1665,57 @@ export function FinancePage() {
             onChange={(e) => e["target"]["value"] >= "2026-10" && setMonth(e["target"]["value"])}
           />
           <select
-            aria-label="Finance class filter"
+            aria-label="Filtro per lezione"
             value={filter}
             onChange={(e) => setFilter(e["target"]["value"])}
             className="studio-input max-w-36"
           >
-            <option>All</option>
+            <option>Tutte</option>
             <option>Yoga</option>
             <option>Stretching</option>
           </select>
         </div>
         <Button variant="outline" onClick={exportFinance}>
           <Download />
-          Export report
+          Esporta report
         </Button>
       </div>
-      {filter !== "All" && (
+      {filter !== "Tutte" && (
         <p className="mb-5 text-xs text-muted-foreground">
-          Class filters include linked single-visit payments only. Membership income and shared
-          expenses remain in All.
+          I filtri per lezione includono solo i pagamenti delle lezioni singole collegate. Gli
+          incassi degli abbonamenti e le spese condivise restano in «Tutte».
         </p>
       )}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <Metric
-          label="Received income"
+          label="Entrate ricevute"
           value={euro(fin["income"])}
-          detail={`${fin["payments"]} payments received`}
+          detail={`${fin["payments"]} pagamenti ricevuti`}
           icon={ArrowDownLeft}
         />
         <Metric
-          label="Expenses"
+          label="Uscite"
           value={euro(fin["expenses"])}
-          detail="Actual studio costs"
+          detail="Costi reali dello studio"
           icon={Wallet}
         />
         <Metric
-          label="Net profit"
+          label="Utile netto"
           value={euro(fin["profit"])}
-          detail="Income minus expenses"
+          detail="Entrate meno uscite"
           icon={CircleDollarSign}
           tone="success"
         />
         <Metric
-          label="Unpaid bookings"
+          label="Prenotazioni non pagate"
           value={unpaid["length"]}
-          detail={`${euro(unpaid["reduce"]((n, b) => n + Number(b["amount"]) - Number(b["paid"]), 0))} outstanding`}
+          detail={`${euro(unpaid["reduce"]((n, b) => n + Number(b["amount"]) - Number(b["paid"]), 0))} da saldare`}
           icon={Ticket}
         />
       </div>
       <section className="panel mt-8">
         <div className="flex justify-between items-center">
-          <h2 className="section-heading">The year in balance</h2>
+          <h2 className="section-heading">L'anno in equilibrio</h2>
           <span className="text-xs text-muted-foreground">{month["slice"](0, 4)}</span>
         </div>
         <div className="mt-5">
@@ -1713,7 +1725,7 @@ export function FinancePage() {
       <section className="panel mt-8">
         <div className="flex flex-wrap justify-between gap-3">
           <div className="flex gap-2">
-            {["Income", "Expenses", "Unpaid"]["map"]((t) => (
+            {["Entrate", "Uscite", "Da saldare"]["map"]((t) => (
               <Button key={t} variant={tab === t ? "secondary" : "ghost"} onClick={() => setTab(t)}>
                 {t}
               </Button>
@@ -1723,15 +1735,15 @@ export function FinancePage() {
             {months[Number(month["slice"](5, 7)) - 1]} {month["slice"](0, 4)}
           </span>
         </div>
-        {tab === "Unpaid" ? (
+        {tab === "Da saldare" ? (
           unpaid["length"] ? (
             <div className="overflow-x-auto mt-4">
               <table className="studio-table">
                 <thead>
                   <tr>
-                    <th>Student</th>
-                    <th>Class</th>
-                    <th>Due</th>
+                    <th>Allieva</th>
+                    <th>Lezione</th>
+                    <th>Dovuto</th>
                     <th />
                   </tr>
                 </thead>
@@ -1753,7 +1765,7 @@ export function FinancePage() {
                             setKind("payment");
                           }}
                         >
-                          Register payment
+                          Registra pagamento
                         </Button>
                       </td>
                     </tr>
@@ -1762,18 +1774,18 @@ export function FinancePage() {
               </table>
             </div>
           ) : (
-            <Empty icon={Check} title="No unpaid bookings this month" />
+            <Empty icon={Check} title="Nessuna prenotazione non pagata questo mese" />
           )
         ) : rows["length"] ? (
           <div className="overflow-x-auto mt-4">
             <table className="studio-table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Description</th>
-                  <th>Category</th>
-                  <th>Method</th>
-                  <th>Amount</th>
+                  <th>Data</th>
+                  <th>Descrizione</th>
+                  <th>Categoria</th>
+                  <th>Metodo</th>
+                  <th>Importo</th>
                   <th />
                 </tr>
               </thead>
@@ -1789,11 +1801,11 @@ export function FinancePage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        title="Edit transaction"
+                        title="Modifica movimento"
                         onClick={() => {
                           setEdit(r);
                           setBooking(undefined);
-                          setKind(tab === "Expenses" ? "expense" : "payment");
+                          setKind(tab === "Uscite" ? "expense" : "payment");
                         }}
                       >
                         <Pencil />
@@ -1801,15 +1813,15 @@ export function FinancePage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        title="Delete transaction"
+                        title="Elimina movimento"
                         onClick={async () => {
                           if (
                             !db ||
-                            !confirm("Delete this transaction? Financial totals will change.")
+                            !confirm("Eliminare questo movimento? I totali finanziari cambieranno.")
                           )
                             return;
                           await db["run"](
-                            `DELETE FROM ${tab === "Expenses" ? "expenses" : "payments"} WHERE id=?`,
+                            `DELETE FROM ${tab === "Uscite" ? "expenses" : "payments"} WHERE id=?`,
                             [String(r["id"])],
                           );
                           refresh();
@@ -1826,48 +1838,48 @@ export function FinancePage() {
         ) : (
           <Empty
             icon={Wallet}
-            title={`No ${tab["toLowerCase"]()} recorded yet`}
-            description="A fresh ledger. Only your real transactions appear here."
+            title={`Nessun elemento in «${tab}» per ora`}
+            description="Un registro tutto nuovo. Qui compaiono solo i tuoi movimenti reali."
           />
         )}
       </section>
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Metric
-          label="Classes held"
+          label="Lezioni tenute"
           value={
             db?.["value"](
               "SELECT count(*) FROM classes WHERE substr(date,1,7)=? AND date<=? AND status<>'Cancelled'",
               [month, romeToday()],
             ) || 0
           }
-          detail="Scheduled, not cancelled"
+          detail="Programmate, non annullate"
           icon={CalendarDays}
         />
         <Metric
-          label="Student visits"
+          label="Presenze delle allieve"
           value={
             db?.["value"](
               "SELECT count(*) FROM attendance a JOIN bookings b ON b.id=a.booking_id JOIN classes c ON c.id=b.class_id WHERE a.status='Present' AND substr(c.date,1,7)=?",
               [month],
             ) || 0
           }
-          detail="Present attendance"
+          detail="Presenze effettive"
           icon={Users}
         />
         <Metric
-          label="Memberships sold"
+          label="Abbonamenti venduti"
           value={
             db?.["value"]("SELECT count(*) FROM memberships WHERE substr(purchased,1,7)=?", [
               month,
             ]) || 0
           }
-          detail="Purchased this month"
+          detail="Acquistati questo mese"
           icon={Ticket}
         />
         <Metric
-          label="Payments received"
+          label="Pagamenti ricevuti"
           value={fin["payments"]}
-          detail="Actual received income"
+          detail="Entrate effettivamente ricevute"
           icon={Wallet}
         />
       </div>
@@ -1891,8 +1903,8 @@ export function ClassPage({ id }: { id: string }) {
   const [payment, setPayment] = useState("15");
   const [payBooking, setPayBooking] = useState<Row | undefined>();
   const c = db?.["rows"]("SELECT * FROM classes WHERE id=?", [id])[0];
-  if (!db) return <p>Opening your class…</p>;
-  if (!c) return <Empty title="Class not found" />;
+  if (!db) return <p>Apertura della lezione…</p>;
+  if (!c) return <Empty title="Lezione non trovata" />;
   const bookings = db["bookings"](id);
   const active = student ? db["activeMembership"](student, String(c["date"])) : undefined;
   async function book(e: React.FormEvent) {
@@ -1902,11 +1914,11 @@ export function ClassPage({ id }: { id: string }) {
       await db["book"](id, student, place, payment);
       refresh();
       setPlace(null);
-      toast["success"]("Student booked.");
+      toast["success"]("Allieva prenotata.");
     } catch (e) {
       toast["error"](
         String(e)["includes"]("UNIQUE")
-          ? "This student is already booked or this place is occupied."
+          ? "Questa allieva è già prenotata o il posto è occupato."
           : String(e),
       );
     }
@@ -1916,17 +1928,17 @@ export function ClassPage({ id }: { id: string }) {
       <Button variant="link" className="mb-4 h-auto p-0 text-xs" asChild>
         <Link to="/calendar">
           <ChevronLeft />
-          Back to calendar
+          Torna al calendario
         </Link>
       </Button>
       <Header
         eyebrow={String(c["type"]) + " · " + dateLabel(String(c["date"]))}
         title={String(c["name"])}
-        subtitle={`${c["start"]}–${c["end"]} · ${c["location"] || "VONA Studio"} · ${bookings["length"]}/${c["capacity"]} places booked`}
+        subtitle={`${c["start"]}–${c["end"]} · ${c["location"] || "VONA Studio"} · ${bookings["length"]}/${c["capacity"]} posti prenotati`}
       >
         <Button variant="outline" onClick={() => setEdit(true)}>
           <Pencil />
-          Edit class
+          Modifica lezione
         </Button>
         <Button
           variant="outline"
@@ -1934,7 +1946,7 @@ export function ClassPage({ id }: { id: string }) {
           onClick={async () => {
             if (
               !confirm(
-                "Cancel this class? Bookings and payments are preserved; membership visits will be restored.",
+                "Annullare questa lezione? Prenotazioni e pagamenti sono preservati; le lezioni degli abbonamenti saranno ripristinate.",
               )
             )
               return;
@@ -1946,26 +1958,26 @@ export function ClassPage({ id }: { id: string }) {
             }
           }}
         >
-          Cancel class
+          Annulla lezione
         </Button>
       </Header>
       {c["status"] === "Cancelled" && (
-        <p className="mb-5 tag warning">Class cancelled · historical records preserved</p>
+        <p className="mb-5 tag warning">Lezione annullata · record storici preservati</p>
       )}
       {bookings["length"] >= Number(c["capacity"]) && (
-        <p className="mb-5 tag warning">This class is full</p>
+        <p className="mb-5 tag warning">Questa lezione è al completo</p>
       )}
       <div className="overflow-x-auto">
         <table className="studio-table">
           <thead>
             <tr>
-              <th>No.</th>
-              <th>Student</th>
-              <th>Payment type</th>
-              <th>Amount</th>
-              <th>Payment</th>
-              <th>Attendance</th>
-              <th>Notes</th>
+              <th>N.</th>
+              <th>Allieva</th>
+              <th>Tipo di pagamento</th>
+              <th>Importo</th>
+              <th>Pagamento</th>
+              <th>Presenza</th>
+              <th>Note</th>
               <th />
             </tr>
           </thead>
@@ -1981,13 +1993,13 @@ export function ClassPage({ id }: { id: string }) {
                       <td>
                         {b["membership_id"] ? (
                           <>
-                            <span className="tag">Membership</span>
+                            <span className="tag">Abbonamento</span>
                             <p className="mt-1 text-[10px]">
-                              {db["balance"](String(b["membership_id"]))} visits left
+                              {db["balance"](String(b["membership_id"]))} lezioni rimaste
                             </p>
                           </>
                         ) : (
-                          "Single visit"
+                          "Lezione singola"
                         )}
                       </td>
                       <td>{b["membership_id"] ? "—" : euro(Number(b["amount"]))}</td>
@@ -2007,7 +2019,7 @@ export function ClassPage({ id }: { id: string }) {
                                 : "warning")
                             }
                           >
-                            Membership{" "}
+                            Abbonamento{" "}
                             {db["value"](
                               "SELECT COALESCE(sum(amount),0) FROM payments WHERE membership_id=?",
                               [String(b["membership_id"])],
@@ -2015,21 +2027,21 @@ export function ClassPage({ id }: { id: string }) {
                             db["value"]("SELECT price FROM memberships WHERE id=?", [
                               String(b["membership_id"]),
                             ])
-                              ? "paid"
-                              : "unpaid"}
+                              ? "pagato"
+                              : "da pagare"}
                           </span>
                         ) : Number(b["paid"]) >= Number(b["amount"]) ? (
-                          <span className="tag success">Paid</span>
+                          <span className="tag success">Pagata</span>
                         ) : (
                           <Button size="sm" variant="outline" onClick={() => setPayBooking(b)}>
-                            {Number(b["paid"]) > 0 ? "Partially paid" : "Unpaid"}
+                            {Number(b["paid"]) > 0 ? "Partially paid" : "Da saldare"}
                           </Button>
                         )}
                       </td>
                       <td>
                         <select
                           className="studio-input min-w-24"
-                          aria-label={`Attendance for ${b["name"]}`}
+                          aria-label={`Presenza di ${b["name"]}`}
                           value={String(b["status"])}
                           disabled={c["status"] === "Cancelled"}
                           onChange={async (e) => {
@@ -2042,13 +2054,15 @@ export function ClassPage({ id }: { id: string }) {
                           }}
                         >
                           {["Booked", "Present", "Absent", "Cancelled"]["map"]((s) => (
-                            <option key={s}>{s}</option>
+                            <option key={s} value={s}>
+                              {statusLabels[s]}
+                            </option>
                           ))}
                         </select>
                       </td>
                       <td>
                         <input
-                          aria-label={`Notes for ${b["name"]}`}
+                          aria-label={`Note per ${b["name"]}`}
                           className="studio-input min-w-24"
                           defaultValue={String(b["notes"])}
                           onBlur={async (e) => {
@@ -2062,7 +2076,7 @@ export function ClassPage({ id }: { id: string }) {
                       </td>
                       <td>
                         <Button
-                          title="Move booking"
+                          title="Sposta prenotazione"
                           variant="ghost"
                           size="icon"
                           onClick={async () => {
@@ -2071,7 +2085,7 @@ export function ClassPage({ id }: { id: string }) {
                               [id],
                             );
                             const target = prompt(
-                              "Enter destination class number:\n" +
+                              "Inserisci il numero della lezione di destinazione:\n" +
                                 targets["map"](
                                   (t, i) => `${i + 1}. ${t["date"]} ${t["start"]} ${t["name"]}`,
                                 )["join"]("\n"),
@@ -2085,11 +2099,11 @@ export function ClassPage({ id }: { id: string }) {
                               (_, i) => i + 1,
                             )["find"]((p) => !used["some"]((b) => Number(b["place"]) === p));
                             if (!free) {
-                              toast["error"]("Destination class is full.");
+                              toast["error"]("La lezione di destinazione è al completo.");
                               return;
                             }
                             if (b["status"] === "Present") {
-                              toast["error"]("Reverse attendance before moving this booking.");
+                              toast["error"]("Annulla la presenza prima di spostare questa prenotazione.");
                               return;
                             }
                             try {
@@ -2100,27 +2114,27 @@ export function ClassPage({ id }: { id: string }) {
                               ]);
                               refresh();
                             } catch (e) {
-                              toast["error"]("Student already booked at destination.");
+                              toast["error"]("Allieva già prenotata nella lezione di destinazione.");
                             }
                           }}
                         >
                           <ArrowUpRight />
                         </Button>
                         <Button
-                          title="Remove booking"
+                          title="Rimuovi prenotazione"
                           variant="ghost"
                           size="icon"
                           onClick={async () => {
                             if (
                               !confirm(
-                                "Remove this booking? Payment and membership history will be retained.",
+                                "Rimuovere questa prenotazione? La cronologia di pagamenti e abbonamenti sarà mantenuta.",
                               )
                             )
                               return;
                             try {
                               await db.removeBooking(String(b['id']));
                               refresh();
-                              toast["success"]("Booking cancelled; history retained.");
+                              toast["success"]("Prenotazione annullata; cronologia mantenuta.");
                             } catch (e) {
                               toast["error"](String(e));
                             }
@@ -2145,7 +2159,7 @@ export function ClassPage({ id }: { id: string }) {
                           }}
                         >
                           <Plus />
-                          Add student
+                          Aggiungi allieva
                         </Button>
                       </td>
                       <td />
@@ -2161,13 +2175,13 @@ export function ClassPage({ id }: { id: string }) {
       <Dialog open={place !== null} onOpenChange={(v) => !v && setPlace(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-display text-3xl">Book place {place}</DialogTitle>
+            <DialogTitle className="font-display text-3xl">Prenota il posto {place}</DialogTitle>
             <DialogDescription>
               {c["name"]} · {c["date"]}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={book} className="space-y-4">
-            <Field label="Student">
+            <Field label="Allieva">
               <select
                 required
                 value={student}
@@ -2180,7 +2194,7 @@ export function ClassPage({ id }: { id: string }) {
                   );
                 }}
               >
-                <option value="">Select an existing student</option>
+                <option value="">Seleziona un'allieva esistente</option>
                 {db["rows"]("SELECT * FROM students WHERE status='Active' ORDER BY name")["map"](
                   (s) => (
                     <option key={String(s["id"])} value={String(s["id"])}>
@@ -2190,31 +2204,31 @@ export function ClassPage({ id }: { id: string }) {
                 )}
               </select>
             </Field>
-            <Field label="Payment type">
+            <Field label="Tipo di pagamento">
               <select value={payment} onChange={(e) => setPayment(e["target"]["value"])}>
                 {active && (
                   <option value="membership">
-                    {active["name"]} · {db["balance"](String(active["id"]))} visits left
+                    {active["name"]} · {db["balance"](String(active["id"]))} lezioni rimaste
                   </option>
                 )}
                 <option value={db["settings"]()["single10"]}>
-                  Single visit · {euro(Number(db["settings"]()["single10"]))}
+                  Lezione singola · {euro(Number(db["settings"]()["single10"]))}
                 </option>
                 <option value={db["settings"]()["single15"]}>
-                  Single visit · {euro(Number(db["settings"]()["single15"]))}
+                  Lezione singola · {euro(Number(db["settings"]()["single15"]))}
                 </option>
                 {![db["settings"]()["single10"], db["settings"]()["single15"]]["includes"](
                   String(c["price"]),
                 ) && (
                   <option value={String(c["price"])}>
-                    Class price · {euro(Number(c["price"]))}
+                    Prezzo della lezione · {euro(Number(c["price"]))}
                   </option>
                 )}
               </select>
             </Field>
             <Button type="submit" className="w-full">
               <Plus />
-              Book student
+              Prenota allieva
             </Button>
           </form>
         </DialogContent>
@@ -2233,14 +2247,14 @@ export function ClassPage({ id }: { id: string }) {
 export function SettingsPage() {
   const { db, refresh } = useStudio();
   const [restoring, setRestoring] = useState(false);
-  if (!db) return <p>Opening settings…</p>;
+  if (!db) return <p>Apertura delle impostazioni…</p>;
   const s = db["settings"]();
   async function backup() {
     if (!db) return;
     const bytes = db["db"]["export"]();
     if (window["vonaDesktop"]) await window["vonaDesktop"]["backup"](Array["from"](bytes));
     else download(bytes, "VONA-Studio-" + romeToday() + ".sqlite");
-    toast["success"]("Database backup exported.");
+    toast["success"]("Backup del database esportato.");
   }
   async function csv(table: string) {
     if (!db) return;
@@ -2255,15 +2269,15 @@ export function SettingsPage() {
   }
   async function restore(bytes: Uint8Array) {
     if (!db) return;
-    if (!confirm("Restore this backup? Current data will be backed up first, then replaced."))
+    if (!confirm("Ripristinare questo backup? I dati attuali saranno prima salvati, poi sostituiti."))
       return;
     setRestoring(true);
     try {
       await restoreStudio(db, bytes);
       refresh();
-      toast["success"]("Studio restored.");
+      toast["success"]("Studio ripristinato.");
     } catch (e) {
-      toast["error"]("Restore failed: " + String(e));
+      toast["error"]("Ripristino non riuscito: " + String(e));
     } finally {
       setRestoring(false);
     }
@@ -2271,9 +2285,9 @@ export function SettingsPage() {
   return (
     <>
       <Header
-        eyebrow="A studio that feels like you"
-        title="Settings & backups"
-        subtitle="Your preferences. Your data. Always yours."
+        eyebrow="Uno studio che ti assomiglia"
+        title="Impostazioni e backup"
+        subtitle="Le tue preferenze. I tuoi dati. Sempre tuoi."
       />
       <form
         onSubmit={async (e) => {
@@ -2285,28 +2299,28 @@ export function SettingsPage() {
                 db["db"]["run"]("UPDATE settings SET value=? WHERE key=?", [String(value), key]);
             });
             refresh();
-            toast["success"]("Settings saved. Historical records are unchanged.");
+            toast["success"]("Impostazioni salvate. I record storici restano invariati.");
           } catch (e) {
             toast["error"](String(e));
           }
         }}
       >
         <section className="panel">
-          <h2 className="section-heading">Studio preferences</h2>
+          <h2 className="section-heading">Preferenze dello studio</h2>
           <div className="mt-6 grid max-w-3xl gap-5 sm:grid-cols-2">
-            <Field label="Studio name">
+            <Field label="Nome dello studio">
               <input required name="studio_name" defaultValue={s["studio_name"]} />
             </Field>
-            <Field label="Timezone">
+            <Field label="Fuso orario">
               <input value="Europe/Rome" readOnly />
             </Field>
-            <Field label="Default class duration (minutes)">
+            <Field label="Durata predefinita delle lezioni (minuti)">
               <input type="number" min="1" name="duration" defaultValue={s["duration"]} />
             </Field>
-            <Field label="Default student places">
+            <Field label="Posti predefiniti per lezione">
               <input type="number" min="1" max="100" name="capacity" defaultValue={s["capacity"]} />
             </Field>
-            <Field label="Single visit · price 1 (€)">
+            <Field label="Lezione singola · prezzo 1 (€)">
               <input
                 name="single10"
                 type="number"
@@ -2315,7 +2329,7 @@ export function SettingsPage() {
                 defaultValue={s["single10"]}
               />
             </Field>
-            <Field label="Single visit · price 2 (€)">
+            <Field label="Lezione singola · prezzo 2 (€)">
               <input
                 name="single15"
                 type="number"
@@ -2324,28 +2338,28 @@ export function SettingsPage() {
                 defaultValue={s["single15"]}
               />
             </Field>
-            <Field label="Payment methods (comma separated)">
+            <Field label="Metodi di pagamento (separati da virgola)">
               <input required name="methods" defaultValue={s["methods"]} />
             </Field>
-            <Field label="Class types (comma separated)">
+            <Field label="Tipi di lezione (separati da virgola)">
               <input required name="class_types" defaultValue={s["class_types"]} />
             </Field>
           </div>
           <Button type="submit" className="mt-6">
             <Check />
-            Save preferences
+            Salva preferenze
           </Button>
         </section>
       </form>
       <section className="panel mt-9">
-        <h2 className="section-heading">Backups & data</h2>
+        <h2 className="section-heading">Backup e dati</h2>
         <p className="mt-2 text-xs text-muted-foreground">
-          All records stay on this device. Keep a backup somewhere safe.
+          Tutti i dati restano su questo dispositivo. Conserva un backup in un luogo sicuro.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Button variant="outline" onClick={backup}>
             <Download />
-            Back up full database
+            Backup completo del database
           </Button>
           <Button
             disabled={restoring}
@@ -2358,7 +2372,7 @@ export function SettingsPage() {
             }}
           >
             <Upload />
-            {restoring ? "Restoring…" : "Restore backup"}
+            {restoring ? "Ripristino…" : "Ripristina backup"}
           </Button>
           <input
             id="restore-file"
@@ -2373,19 +2387,19 @@ export function SettingsPage() {
           />
           <Button variant="outline" onClick={() => csv("students")}>
             <Download />
-            Students CSV
+            CSV allieve
           </Button>
           <Button variant="outline" onClick={() => csv("attendance")}>
             <Download />
-            Attendance CSV
+            CSV presenze
           </Button>
         </div>
         <p className="mt-4 text-[10px] text-muted-foreground">
-          SQLite database · Schema version 1 · No account required
+          Database SQLite · Nessun account richiesto
         </p>
       </section>
       <section className="panel mt-9">
-        <h2 className="section-heading">Expense categories</h2>
+        <h2 className="section-heading">Categorie di spesa</h2>
         <div className="mt-5 flex flex-wrap gap-2">
           {db["rows"]("SELECT * FROM expense_categories")["map"]((c) => (
             <span className="tag stretch" key={String(c["name"])}>
@@ -2398,28 +2412,28 @@ export function SettingsPage() {
           size="sm"
           className="mt-4"
           onClick={async () => {
-            const category = prompt("New expense category");
+            const category = prompt("Nuova categoria di spesa");
             if (!category?.["trim"]()) return;
             try {
               await db["run"]("INSERT INTO expense_categories VALUES(?)", [category["trim"]()]);
               refresh();
             } catch (e) {
-              toast["error"]("This category already exists.");
+              toast["error"]("Questa categoria esiste già.");
             }
           }}
         >
           <Plus />
-          Add category
+          Aggiungi categoria
         </Button>
       </section>
       <section className="panel mt-9">
-        <h2 className="section-heading">Membership pricing</h2>
+        <h2 className="section-heading">Prezzi degli abbonamenti</h2>
         <p className="mt-2 text-xs text-muted-foreground">
-          Changes apply to future purchases only.
+          Le modifiche si applicano solo agli acquisti futuri.
         </p>
         <Button variant="link" asChild className="mt-2 px-0">
           <Link to="/memberships">
-            Manage membership types <ArrowUpRight />
+            Gestisci i tipi di abbonamento <ArrowUpRight />
           </Link>
         </Button>
       </section>
