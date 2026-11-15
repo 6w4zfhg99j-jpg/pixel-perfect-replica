@@ -1,0 +1,1 @@
+export const pageHead=(page:string,description:string)=>({meta:[{title:`${page} · VONA Studio Manager`},{name:'description',content:description},{property:'og:title',content:`${page} · VONA Studio Manager`},{property:'og:description',content:description},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary_large_image'}]});

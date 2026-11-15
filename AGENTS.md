@@ -28,3 +28,9 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Studio architecture
+- Keep navigation in TanStack routes with a shared StudioProvider; all sections must use the same local database instance.
+- Use client-initialized sql.js SQLite with IndexedDB in preview and Electron IPC for atomic userData file persistence; core operations must not depend on remote services.
+- Version schema migrations in studio-db.ts and retain relational constraints and transactional attendance/payment writes to protect historical records.
+- Keep Electron isolated under electron/ and use its separate static renderer configuration; deployed SSR must never import Electron.

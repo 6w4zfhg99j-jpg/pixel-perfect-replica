@@ -1,0 +1,2 @@
+const {contextBridge,ipcRenderer}=require('electron');
+contextBridge.exposeInMainWorld('vonaDesktop',{read:()=>ipcRenderer.invoke('studio:read'),write:bytes=>ipcRenderer.invoke('studio:write',bytes),backup:bytes=>ipcRenderer.invoke('studio:backup',bytes),restore:()=>ipcRenderer.invoke('studio:restore')});
