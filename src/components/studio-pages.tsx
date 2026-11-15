@@ -11,7 +11,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
-  Flower2,
   Download,
   Upload,
   Archive,
@@ -32,6 +31,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useStudio } from "./studio-provider";
+import omIcon from "@/assets/welcome-icon-om.png";
 import {
   CALENDAR_START,
   FINANCE_START,
@@ -690,7 +690,13 @@ export function Dashboard() {
             Plan your next class <ArrowUpRight size={14} />
           </Button>
         </div>
-        <Flower2 size={95} strokeWidth={0.7} className="hidden shrink-0 text-primary/50 sm:block" />
+        <img
+          src={omIcon}
+          alt=""
+          width={95}
+          height={95}
+          className="hidden shrink-0 opacity-60 sm:block"
+        />
       </div>
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <Metric
