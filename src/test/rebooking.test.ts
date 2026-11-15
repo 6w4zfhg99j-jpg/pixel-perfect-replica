@@ -70,3 +70,27 @@ describe('Rebooking persistence and migration', () => {
     expect(upgraded.finance('2026-11').income).toBe(15);
   });
 });
+
+describe('Available spots', () => {
+  it('counts only active bookings out of 15, per class, and frees a spot on removal or move', async () => {
+    const { db, a, b, cid } = await setup('Yoga');
+    await db.addClass({ name: 'Stretching', type: 'Stretching', date: '2026-11-03', start: '15:00', end: '16:00' });
+    const sid = String(db.rows("SELECT id FROM classes WHERE type='Stretching'")[0]?.['id']);
+    expect(db.spots(cid)).toEqual({ capacity: 15, booked: 0, free: 15 });
+    await db.book(cid, a, 1, '15');
+    await db.book(cid, b, 2, '15');
+    expect(db.spots(cid).free).toBe(13);
+    expect(db.spots(sid).free).toBe(15);
+    await db.removeBooking(activeId(db, cid));
+    expect(db.spots(cid).free).toBe(14);
+    const moving = activeId(db, cid);
+    await db.run('UPDATE bookings SET class_id=?,place=? WHERE id=?', [sid, 1, moving]);
+    expect(db.spots(cid).free).toBe(15);
+    expect(db.spots(sid).free).toBe(14);
+  });
+  it('reports zero free when full', async () => {
+    const { db, cid } = await setup('Yoga');
+    for (let i = 1; i <= 15; i++) await db.book(cid, await db.student({ name: 'S' + i, registered: '2026-11-01' }), i, '15');
+    expect(db.spots(cid)).toEqual({ capacity: 15, booked: 15, free: 0 });
+  });
+});

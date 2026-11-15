@@ -441,6 +441,22 @@
   background: var(--yoga-soft);
   color: var(--yoga);
 }
+.spots-label {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+.spots-label.low {
+  opacity: 1;
+  font-weight: 600;
+}
+.spots-label.full {
+  opacity: 1;
+  font-weight: 600;
+  color: var(--accent);
+}
 .class-chip.stretch {
   background: var(--stretch-soft);
   color: var(--stretch);

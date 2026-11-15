@@ -699,6 +699,12 @@ export class StudioDB {
       ),
     };
   }
+  /** Free places in a class, counting only active bookings (removed bookings have place<=0). */
+  spots(classId: string) {
+    const capacity = this["value"]("SELECT capacity FROM classes WHERE id=?", [classId]);
+    const booked = this["value"]("SELECT count(*) FROM bookings WHERE class_id=? AND place>0", [classId]);
+    return { capacity, booked, free: Math.max(0, capacity - booked) };
+  }
   bookings(classId?: string) {
     return this["rows"](
       `SELECT b.*,s.name,a.status,c.name class_name,c.type,c.date,c.start,COALESCE((SELECT sum(p.amount) FROM payments p WHERE p.booking_id=b.id),0) paid FROM bookings b JOIN students s ON s.id=b.student_id JOIN attendance a ON a.booking_id=b.id JOIN classes c ON c.id=b.class_id ${classId ? "WHERE b.class_id=? AND b.place>0" : ""} ORDER BY c.date,c.start,b.place`,

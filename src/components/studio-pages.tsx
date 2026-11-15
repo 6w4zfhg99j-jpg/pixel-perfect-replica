@@ -910,7 +910,17 @@ export function Dashboard() {
     </>
   );
 }
-function ClassLine({ c }: { c: Row }) {
+function SpotsLabel({ c }: { c: Row }) {
+  const { db } = useStudio();
+  if (!db || c["status"] === "Cancelled") return null;
+  const { free, capacity } = db["spots"](String(c["id"]));
+  return (
+    <span className={"spots-label" + (free === 0 ? " full" : free <= 2 ? " low" : "")}>
+      {free === 0 ? `Completo · 0/${capacity}` : `Posti disponibili: ${free}/${capacity}`}
+    </span>
+  );
+}
+function ClassLine({ c, spots }: { c: Row; spots?: boolean }) {
   const { db } = useStudio();
   return (
     <Link
@@ -927,6 +937,7 @@ function ClassLine({ c }: { c: Row }) {
         <p className="mt-1 text-[10px] text-muted-foreground">
           {c["location"] || "VONA Studio"} · {c["start"]}–{c["end"]}
         </p>
+        {spots && <SpotsLabel c={c} />}
       </div>
       <span className="tag" style={tagStyle(db?.["typeColor"](String(c["type"])))}>
         {c["type"]}
@@ -1118,6 +1129,7 @@ export function CalendarPage() {
                   >
                     <span>{x["start"]}</span> · {x["name"]}
                     {x["status"] === "Cancelled" ? " (annullata)" : ""}
+                    <SpotsLabel c={x} />
                   </Link>
                 ))}
               </div>
@@ -1140,7 +1152,7 @@ export function CalendarPage() {
             </Field>
           </div>
           {shown["length"] ? (
-            shown["map"]((c) => <ClassLine key={String(c["id"])} c={c} />)
+            shown["map"]((c) => <ClassLine key={String(c["id"])} c={c} spots />)
           ) : (
             <Empty
               title="Nessuna lezione in questa vista"
