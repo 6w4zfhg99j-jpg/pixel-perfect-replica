@@ -12,7 +12,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "desktop:build": "vite build --config electron/vite.config.ts --mode desktop",
+    "desktop:dmg": "npm run desktop:build && electron-packager . 'VONA Studio Manager' --platform=darwin --arch=arm64 --out=desktop-release --overwrite --ignore='^/(src|public|node_modules|\\.git|\\.jj|\\.lovable|desktop-release|electron-release)' --ignore='^/electron/(renderer\\.tsx|vite\\.config\\.ts|index\\.html)$'"
   },
   "overrides": {
     "rolldown": "1.2.1"

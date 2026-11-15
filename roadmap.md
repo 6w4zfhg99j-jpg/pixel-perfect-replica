@@ -14,3 +14,4 @@
 - Monthly income/expense charts are implemented; a separate net-profit chart is not yet implemented.
 - Default membership prices of €40/€80 are provisional and editable; the brief did not supply these amounts.
 - No packaged or signed macOS application has been produced; Electron source is provided within the project only.- [x] Translate entire interface to Italian (default language): dashboard, navigation, buttons, calendar, students, memberships, finance, notifications, settings, errors; schema v2 migrates existing seed data to Italian.
+- [x] Offline macOS desktop prep: audit clean, desktop:dmg script added, packaged app tested offline (student/class/booking/attendance/payment/membership + restart persistence).
