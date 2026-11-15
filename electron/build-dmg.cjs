@@ -22,6 +22,7 @@ async function buildDMG() {
     fs.mkdirSync(path.join(staging, 'electron'));
     for (const file of ['main.cjs', 'preload.cjs', 'local-files.cjs'])
       fs.copyFileSync(path.join(__dirname, file), path.join(staging, 'electron', file));
+    fs.cpSync(path.join(__dirname, 'icons'), path.join(staging, 'electron', 'icons'), { recursive: true });
     const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
     fs.writeFileSync(path.join(staging, 'package.json'), JSON.stringify({
       name: 'vona-studio-manager', productName: 'VONA Studio Manager',
@@ -31,7 +32,8 @@ async function buildDMG() {
     const [appFolder] = await packager({ dir: staging, name: 'VONA Studio Manager',
       platform: 'darwin', arch, out: path.join(root, 'desktop-release'), overwrite: true,
       electronVersion: require('electron/package.json').version,
-      appBundleId: 'it.vona.studio-manager', appVersion: pkg.version || '1.0.0', });
+      appBundleId: 'it.vona.studio-manager', appVersion: pkg.version || '1.0.0',
+      icon: path.join(__dirname, 'icons', 'icon.icns'), });
     if (!appFolder) throw new Error('Applicazione macOS non creata.');
     const imageRoot = path.join(staging, 'image');
     fs.mkdirSync(imageRoot);
@@ -40,6 +42,10 @@ async function buildDMG() {
     const dmg = path.join(root, 'desktop-release', `VONA-Studio-Manager-${arch}.dmg`);
     fs.rmSync(dmg, { force: true });
     run('hdiutil', ['create', '-volname', 'VONA Studio Manager', '-srcfolder', imageRoot, '-ov', '-format', 'UDZO', dmg]);
+    // Give the DMG file itself the app icon (Finder custom icon).
+    const rsrc = path.join(staging, 'icon.rsrc');
+    const r1 = spawnSync('sh', ['-c', `sips -i "${path.join(__dirname, 'icons', 'icon.png')}" >/dev/null && DeRez -only icns "${path.join(__dirname, 'icons', 'icon.png')}" > "${rsrc}" && Rez -append "${rsrc}" -o "${dmg}" && SetFile -a C "${dmg}"`]);
+    if (r1.status !== 0) console.warn('Icona del file DMG non applicata (richiede Xcode Command Line Tools); l’app ha comunque la sua icona.');
     console.log(`DMG creato: ${dmg}`);
   } finally { fs.rmSync(staging, { recursive: true, force: true }); }
 }
